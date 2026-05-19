@@ -127,6 +127,18 @@
         </button>
       </div>
 
+      <!-- Modo Dormir -->
+      <div class="px-22 mt-12">
+        <button class="sleep-card" id="btn-sleep-mode">
+          <div class="sleep-icon-wrap">🌙</div>
+          <div class="sos-text">
+            <div class="sos-title">Modo Dormir</div>
+            <div class="sos-sub">Sonidos · Temporizador · Yoga Nidra</div>
+          </div>
+          <div class="sleep-arrow">→</div>
+        </button>
+      </div>
+
       <!-- Quick sessions -->
       <div class="px-22 mt-18">
         <div class="section-row">
@@ -386,6 +398,104 @@
       </div>
 
       <div style="height:24px"></div>
+    </div>
+  </div>
+
+  <!-- ── SLEEP MODE (fullscreen overlay) ────────────── -->
+  <div id="screen-sleep" class="screen screen-full sleep-screen" data-screen="sleep">
+    <div class="zbg zbg--sleep"></div>
+    <svg class="stars-layer stars-dense" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <circle cx="8"  cy="6"  r="0.12" fill="#fff" opacity="0.5"/>
+      <circle cx="22" cy="14" r="0.08" fill="#fff" opacity="0.4"/>
+      <circle cx="38" cy="9"  r="0.15" fill="#fff" opacity="0.6"/>
+      <circle cx="55" cy="18" r="0.09" fill="#fff" opacity="0.45"/>
+      <circle cx="72" cy="7"  r="0.13" fill="#fff" opacity="0.55"/>
+      <circle cx="88" cy="16" r="0.10" fill="#fff" opacity="0.5"/>
+      <circle cx="14" cy="28" r="0.07" fill="#fff" opacity="0.35"/>
+      <circle cx="42" cy="32" r="0.11" fill="#fff" opacity="0.5"/>
+      <circle cx="65" cy="38" r="0.08" fill="#fff" opacity="0.4"/>
+      <circle cx="92" cy="44" r="0.12" fill="#fff" opacity="0.55"/>
+      <circle cx="6"  cy="55" r="0.10" fill="#fff" opacity="0.45"/>
+      <circle cx="28" cy="62" r="0.07" fill="#fff" opacity="0.35"/>
+      <circle cx="48" cy="58" r="0.13" fill="#fff" opacity="0.6"/>
+      <circle cx="72" cy="65" r="0.09" fill="#fff" opacity="0.45"/>
+      <circle cx="86" cy="72" r="0.08" fill="#fff" opacity="0.4"/>
+      <circle cx="18" cy="78" r="0.11" fill="#fff" opacity="0.5"/>
+      <circle cx="38" cy="85" r="0.07" fill="#fff" opacity="0.35"/>
+      <circle cx="58" cy="92" r="0.12" fill="#fff" opacity="0.55"/>
+      <circle cx="80" cy="88" r="0.09" fill="#fff" opacity="0.45"/>
+      <circle cx="95" cy="95" r="0.10" fill="#fff" opacity="0.5"/>
+    </svg>
+
+    <!-- Cerrar -->
+    <button class="btn-close sleep-close" id="btn-sleep-close" aria-label="Cerrar">
+      <svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="#f1f5f9" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+
+    <div class="sleep-scroll">
+      <!-- Header -->
+      <div class="sleep-header">
+        <div class="sleep-moon" id="sleep-moon">🌙</div>
+        <div class="grad-title grad-title--32">Buenas noches</div>
+        <div class="sleep-sub" id="sleep-sub">Elige cómo quieres dormir hoy</div>
+      </div>
+
+      <!-- Mezclas de sonido -->
+      <div class="px-22 mt-22">
+        <div class="section-label mb-10">Mezclas para dormir</div>
+        <div class="sleep-mix-grid" id="sleep-mix-grid"></div>
+      </div>
+
+      <!-- Temporizador -->
+      <div class="px-22 mt-22">
+        <div class="section-label mb-10">Temporizador de apagado</div>
+        <div class="sleep-timer-row" id="sleep-timer-row">
+          <button class="sleep-timer-pill" data-mins="0">∞</button>
+          <button class="sleep-timer-pill" data-mins="15">15</button>
+          <button class="sleep-timer-pill active" data-mins="30">30</button>
+          <button class="sleep-timer-pill" data-mins="45">45</button>
+          <button class="sleep-timer-pill" data-mins="60">60</button>
+          <button class="sleep-timer-pill" data-mins="90">90</button>
+        </div>
+        <div class="sleep-timer-hint">Los sonidos se desvanecerán suavemente en el último minuto</div>
+        <div class="sleep-countdown hidden" id="sleep-countdown">
+          <span class="sleep-countdown-icon">⏳</span>
+          <span class="sleep-countdown-text" id="sleep-countdown-text">--:--</span>
+        </div>
+      </div>
+
+      <!-- Sesiones guiadas -->
+      <div class="px-22 mt-22">
+        <div class="section-label mb-10">Sesiones guiadas</div>
+        <div class="sleep-sessions">
+          <button class="sleep-session-card" data-session="yoganidra">
+            <span class="sleep-session-icon">🌌</span>
+            <div class="sleep-session-info">
+              <span class="sleep-session-name">Yoga Nidra</span>
+              <span class="sleep-session-meta">25 min · Sueño consciente</span>
+            </div>
+            <span class="sleep-session-arrow">→</span>
+          </button>
+          <button class="sleep-session-card" data-session="cuento">
+            <span class="sleep-session-icon">📖</span>
+            <div class="sleep-session-info">
+              <span class="sleep-session-name">Cuento para dormir</span>
+              <span class="sleep-session-meta">15 min · Visualización</span>
+            </div>
+            <span class="sleep-session-arrow">→</span>
+          </button>
+          <button class="sleep-session-card" data-session="sueno">
+            <span class="sleep-session-icon">🌙</span>
+            <div class="sleep-session-info">
+              <span class="sleep-session-name">Sueño profundo</span>
+              <span class="sleep-session-meta">20 min · Relajación guiada</span>
+            </div>
+            <span class="sleep-session-arrow">→</span>
+          </button>
+        </div>
+      </div>
+
+      <div style="height:32px"></div>
     </div>
   </div>
 

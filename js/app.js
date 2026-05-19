@@ -53,6 +53,7 @@
     setupSOS();
     setupSeeAll();
     setupSessionScreen();
+    setupSleepMode();
     updateProgress();
     ZenAnim.initMandala();
     ZenAnim.initAudioViz();
@@ -263,6 +264,130 @@
     currentScreen = screenName;
     if (screenName === 'progress') updateProgress();
     if (screenName === 'sounds')   ZenAnim.initAudioViz();
+  }
+
+  // ---- Modo Dormir ----
+  let sleepTimerMins = 30;
+  let sleepCountdownIv = null;
+  let sleepFadeTimeout = null;
+  let activeMixId = null;
+
+  function setupSleepMode() {
+    const btn = document.getElementById('btn-sleep-mode');
+    if (btn) btn.addEventListener('click', openSleepMode);
+    const close = document.getElementById('btn-sleep-close');
+    if (close) close.addEventListener('click', closeSleepMode);
+
+    buildSleepMixes();
+
+    document.querySelectorAll('.sleep-timer-pill').forEach(p =>
+      p.addEventListener('click', () => {
+        document.querySelectorAll('.sleep-timer-pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        sleepTimerMins = +p.dataset.mins;
+        if (activeMixId) restartSleepTimer();
+      })
+    );
+
+    document.querySelectorAll('.sleep-session-card').forEach(c =>
+      c.addEventListener('click', () => {
+        closeSleepMode(true);
+        openSession(c.dataset.session);
+      })
+    );
+  }
+
+  function buildSleepMixes() {
+    const grid = document.getElementById('sleep-mix-grid');
+    if (!grid) return;
+    grid.innerHTML = ZenAudio.SLEEP_MIXES.map(m => `
+      <button class="sleep-mix-card" data-mix="${m.id}">
+        <span class="sleep-mix-ico">${m.icon}</span>
+        <div class="sleep-mix-info">
+          <span class="sleep-mix-name">${m.label}</span>
+          <span class="sleep-mix-desc">${m.desc}</span>
+        </div>
+      </button>`).join('');
+
+    grid.querySelectorAll('.sleep-mix-card').forEach(card =>
+      card.addEventListener('click', () => {
+        const id = card.dataset.mix;
+        if (activeMixId === id) {
+          ZenAudio.stopAllSounds();
+          activeMixId = null;
+          card.classList.remove('on');
+          stopSleepTimer();
+          return;
+        }
+        grid.querySelectorAll('.sleep-mix-card').forEach(c => c.classList.remove('on'));
+        card.classList.add('on');
+        ZenAudio.startSleepMix(id);
+        activeMixId = id;
+        restartSleepTimer();
+      })
+    );
+  }
+
+  function restartSleepTimer() {
+    stopSleepTimer();
+    if (sleepTimerMins === 0) {
+      document.getElementById('sleep-countdown').classList.add('hidden');
+      return;
+    }
+    const endAt = Date.now() + sleepTimerMins * 60000;
+    const countdown = document.getElementById('sleep-countdown');
+    const txt = document.getElementById('sleep-countdown-text');
+    countdown.classList.remove('hidden');
+
+    function tick() {
+      const remaining = Math.max(0, Math.round((endAt - Date.now()) / 1000));
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      txt.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      if (remaining <= 0) {
+        clearInterval(sleepCountdownIv);
+        sleepCountdownIv = null;
+      }
+    }
+    tick();
+    sleepCountdownIv = setInterval(tick, 1000);
+
+    // Fade-out durante los últimos 60 s
+    const fadeAt = (sleepTimerMins * 60 - 60) * 1000;
+    sleepFadeTimeout = setTimeout(() => {
+      ZenAudio.fadeOutAll(60, () => {
+        activeMixId = null;
+        document.querySelectorAll('.sleep-mix-card.on').forEach(c => c.classList.remove('on'));
+        countdown.classList.add('hidden');
+      });
+    }, Math.max(0, fadeAt));
+  }
+
+  function stopSleepTimer() {
+    if (sleepCountdownIv) { clearInterval(sleepCountdownIv); sleepCountdownIv = null; }
+    if (sleepFadeTimeout) { clearTimeout(sleepFadeTimeout); sleepFadeTimeout = null; }
+    document.getElementById('sleep-countdown').classList.add('hidden');
+  }
+
+  function openSleepMode() {
+    const screen = document.getElementById('screen-sleep');
+    screen.classList.add('active');
+    screen.style.opacity = '1';
+    screen.style.transform = 'translateY(0)';
+    document.getElementById('bottom-nav').style.display = 'none';
+  }
+
+  function closeSleepMode(keepAudio = false) {
+    if (!keepAudio) {
+      stopSleepTimer();
+      if (activeMixId) {
+        ZenAudio.stopAllSounds();
+        activeMixId = null;
+        document.querySelectorAll('.sleep-mix-card.on').forEach(c => c.classList.remove('on'));
+      }
+    }
+    document.getElementById('screen-sleep').classList.remove('active');
+    document.getElementById('bottom-nav').style.display = '';
   }
 
   // ---- Sesión ----

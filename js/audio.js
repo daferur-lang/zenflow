@@ -478,17 +478,76 @@ const ZenAudio = (() => {
     };
   }
 
+  // ---- Ruido marrón (ideal para dormir — más grave, como lluvia distante) ----
+  function createBrownNoise() {
+    if (!ctx) return null;
+    const bufSize = ctx.sampleRate * 6;
+    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      let last = 0;
+      for (let i = 0; i < bufSize; i++) {
+        const white = Math.random() * 2 - 1;
+        last = (last + 0.02 * white) / 1.02;
+        data[i] = last * 3.5;
+      }
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 800;
+    lp.Q.value = 0.7;
+
+    const g = ctx.createGain();
+    g.gain.value = 0.55;
+
+    // LFO muy lento para variación natural
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.07;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.12;
+    lfo.connect(lfoGain);
+    lfoGain.connect(g.gain);
+
+    src.connect(lp);
+    lp.connect(g);
+    g.connect(masterGain);
+    src.start();
+    lfo.start();
+    return { stop: () => { src.stop(); lfo.stop(); }, gain: g };
+  }
+
   // ---- API pública de sonidos ----
   const SOUNDS = {
     rain:   { label: 'Lluvia',     icon: '🌧',  create: () => createRain() },
     ocean:  { label: 'Océano',     icon: '🌊',  create: () => createOcean() },
     forest: { label: 'Bosque',     icon: '🌿',  create: () => createForest() },
     fire:   { label: 'Hoguera',    icon: '🔥',  create: () => createFire() },
+    brown:  { label: 'Ruido marrón', icon: '🌫', create: () => createBrownNoise() },
     bowl1:  { label: 'Cuenco 432', icon: '🔔',  create: () => createBowlLoop(432, 10) },
     bowl2:  { label: 'Cuenco 528', icon: '🪘',  create: () => createBowlLoop(528, 8) },
     drum:   { label: 'Tambor chamánico', icon: '🥁', create: () => createDrum(210) },
     pad:    { label: 'Ambiente',   icon: '🎹',  create: () => createAmbientPad() },
   };
+
+  // ---- Mezclas pre-diseñadas para dormir ----
+  const SLEEP_MIXES = [
+    { id: 'rain-night', label: 'Lluvia nocturna', icon: '🌧',
+      desc: 'Lluvia suave + ambiente cálido', sounds: ['rain', 'pad'], binaural: 'delta' },
+    { id: 'ocean-deep', label: 'Olas profundas', icon: '🌊',
+      desc: 'Mar lento + ruido marrón grave', sounds: ['ocean', 'brown'], binaural: 'delta' },
+    { id: 'forest-night', label: 'Bosque de noche', icon: '🌲',
+      desc: 'Brisa entre árboles + cuenco', sounds: ['forest', 'bowl1'], binaural: null },
+    { id: 'fireplace', label: 'Chimenea', icon: '🔥',
+      desc: 'Hoguera lenta + ambiente cálido', sounds: ['fire', 'pad'], binaural: null },
+    { id: 'pure-brown', label: 'Solo marrón', icon: '🌫',
+      desc: 'Ruido marrón puro — silencio enmascarado', sounds: ['brown'], binaural: 'delta' },
+    { id: 'cosmic', label: 'Sueño cósmico', icon: '🌌',
+      desc: 'Ambiente flotante + delta profundo', sounds: ['pad', 'brown'], binaural: 'delta' },
+  ];
 
   const BINAURALS = [
     { id: 'delta', hz: 2,  label: 'Delta',  desc: 'Sueño profundo · 0–4 Hz',   base: 180 },
@@ -540,6 +599,37 @@ const ZenAudio = (() => {
     }
   }
 
+  // ---- Fade out global suave (para temporizador de sueño) ----
+  function fadeOutAll(seconds = 60, onDone) {
+    if (!ctx || !masterGain) { if (onDone) onDone(); return; }
+    const startVol = masterGain.gain.value;
+    const t = ctx.currentTime;
+    masterGain.gain.cancelScheduledValues(t);
+    masterGain.gain.setValueAtTime(startVol, t);
+    masterGain.gain.linearRampToValueAtTime(0.0001, t + seconds);
+    setTimeout(() => {
+      stopAllSounds();
+      // Restaurar volumen para uso posterior (silencio efectivo hasta que se vuelva a tocar)
+      if (masterGain) masterGain.gain.setValueAtTime(startVol, ctx.currentTime);
+      if (onDone) onDone();
+    }, seconds * 1000 + 100);
+  }
+
+  // ---- Arrancar mezcla de sueño ----
+  function startSleepMix(mixId) {
+    const mix = SLEEP_MIXES.find(m => m.id === mixId);
+    if (!mix) return null;
+    if (!ctx) init();
+    resume();
+    stopAllSounds();
+    mix.sounds.forEach(s => { activeSounds[s] = SOUNDS[s]?.create(); });
+    if (mix.binaural) {
+      const def = BINAURALS.find(b => b.id === mix.binaural);
+      if (def) binauralActive = { id: mix.binaural, node: createBinaural(def.hz, def.base) };
+    }
+    return mix;
+  }
+
   function isSoundOn(id) { return !!activeSounds[id]; }
   function isBinauralOn(id) { return binauralActive && binauralActive.id === id; }
 
@@ -581,10 +671,11 @@ const ZenAudio = (() => {
 
   return {
     init, resume, setMasterVolume,
-    SOUNDS, BINAURALS,
+    SOUNDS, BINAURALS, SLEEP_MIXES,
     toggleSound, toggleBinaural, stopAllSounds,
     isSoundOn, isBinauralOn,
     startSessionAudio, stopSessionAudio,
+    startSleepMix, fadeOutAll,
     getFrequencyData, getWaveformData,
     bowlTap, playBowl,
   };
