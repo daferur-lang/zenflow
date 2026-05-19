@@ -12,286 +12,423 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
   <title>ZenFlow — Meditación Activa</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <!-- PANTALLA DE INICIO -->
-  <div id="splash" class="splash">
-    <canvas id="splash-canvas"></canvas>
-    <div class="splash-content">
-      <div class="splash-logo">
-        <svg class="splash-symbol" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(124,58,237,0.6)" stroke-width="1.5"/>
-          <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(124,58,237,0.4)" stroke-width="1"/>
-          <circle cx="50" cy="50" r="15" fill="rgba(124,58,237,0.2)" stroke="rgba(245,166,35,0.8)" stroke-width="1.5"/>
-          <path d="M50 5 L53 47 L50 50 L47 47 Z" fill="rgba(245,166,35,0.6)"/>
-          <path d="M95 50 L53 53 L50 50 L53 47 Z" fill="rgba(245,166,35,0.4)"/>
-          <path d="M50 95 L47 53 L50 50 L53 53 Z" fill="rgba(245,166,35,0.6)"/>
-          <path d="M5 50 L47 47 L50 50 L47 53 Z" fill="rgba(245,166,35,0.4)"/>
-        </svg>
-        <h1 class="splash-title">ZenFlow</h1>
-        <p class="splash-subtitle">Meditación Activa</p>
-      </div>
-      <button id="btn-despertar" class="btn-despertar">
-        <span class="btn-ring ring-1"></span>
-        <span class="btn-ring ring-2"></span>
-        <span class="btn-ring ring-3"></span>
-        <span class="btn-text">✦ Toca para despertar</span>
-      </button>
+<!-- ============================================================
+     SPLASH
+     ============================================================ -->
+<div id="splash" class="splash">
+  <!-- Background gradients via CSS class -->
+  <div class="zbg zbg--splash"></div>
+  <!-- Stars layer -->
+  <svg class="stars-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <circle cx="12" cy="8"  r="0.15" fill="#fff" opacity="0.6"/>
+    <circle cx="28" cy="22" r="0.09" fill="#fff" opacity="0.5"/>
+    <circle cx="78" cy="14" r="0.165" fill="#fff" opacity="0.65"/>
+    <circle cx="55" cy="30" r="0.105" fill="#fff" opacity="0.49"/>
+    <circle cx="88" cy="40" r="0.12" fill="#fff" opacity="0.54"/>
+    <circle cx="8"  cy="55" r="0.15" fill="#fff" opacity="0.6"/>
+    <circle cx="42" cy="62" r="0.09" fill="#fff" opacity="0.46"/>
+    <circle cx="72" cy="72" r="0.135" fill="#fff" opacity="0.57"/>
+    <circle cx="18" cy="82" r="0.105" fill="#fff" opacity="0.5"/>
+    <circle cx="62" cy="88" r="0.15" fill="#fff" opacity="0.6"/>
+    <circle cx="35" cy="42" r="0.075" fill="#fff" opacity="0.43"/>
+    <circle cx="92" cy="68" r="0.105" fill="#fff" opacity="0.5"/>
+    <circle cx="22" cy="18" r="0.075" fill="#fff" opacity="0.43"/>
+    <circle cx="68" cy="48" r="0.09" fill="#fff" opacity="0.46"/>
+    <circle cx="48" cy="8"  r="0.12" fill="#fff" opacity="0.54"/>
+    <circle cx="82" cy="90" r="0.09" fill="#fff" opacity="0.46"/>
+    <circle cx="15" cy="30" r="0.06" fill="#fff" opacity="0.39"/>
+    <circle cx="50" cy="75" r="0.09" fill="#fff" opacity="0.46"/>
+  </svg>
+  <!-- Flower of Life — subtle background -->
+  <div class="fol-wrap fol-splash" id="fol-splash"></div>
+  <!-- Mandala + MetatronCube -->
+  <div class="splash-geo">
+    <div class="splash-mandala-wrap">
+      <div class="splash-mandala-svg" id="splash-mandala-svg"></div>
+      <div class="splash-metatron-svg anim-rotate-60" id="splash-metatron-svg"></div>
     </div>
   </div>
+  <!-- Logo -->
+  <div class="splash-logo">
+    <div class="splash-title">ZenFlow</div>
+    <div class="splash-subtitle">Meditación&nbsp;&nbsp;Activa</div>
+  </div>
+  <!-- CTA -->
+  <div class="splash-cta">
+    <button id="btn-despertar" class="cta-btn" aria-label="Iniciar meditación">
+      <span class="cta-ring ring-1"></span>
+      <span class="cta-ring ring-2"></span>
+      <span class="cta-ring ring-3"></span>
+      <span class="cta-inner">✦</span>
+    </button>
+    <div class="cta-label">Toca para despertar</div>
+  </div>
+  <div class="home-indicator"></div>
+</div>
 
-  <!-- APP PRINCIPAL -->
-  <div id="app" class="app hidden">
+<!-- ============================================================
+     APP
+     ============================================================ -->
+<div id="app" class="app hidden">
 
-    <!-- PANTALLA: INICIO -->
-    <div id="screen-home" class="screen active" data-screen="home">
-      <div class="screen-scroll">
-        <header class="app-header">
-          <div id="greeting" class="greeting"></div>
-          <button class="streak-badge" id="streak-badge" title="Tu racha">
-            <span class="streak-fire">🔥</span>
-            <span id="streak-count">0</span>
-            <span class="streak-label">días</span>
-          </button>
-        </header>
+  <!-- ── HOME ─────────────────────────────────────── -->
+  <div id="screen-home" class="screen active" data-screen="home">
+    <div class="screen-scroll">
+      <div class="zbg zbg--home"></div>
+      <svg class="stars-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <circle cx="12" cy="8" r="0.15" fill="#fff" opacity="0.5"/><circle cx="78" cy="14" r="0.165" fill="#fff" opacity="0.55"/>
+        <circle cx="88" cy="40" r="0.12" fill="#fff" opacity="0.44"/><circle cx="72" cy="72" r="0.135" fill="#fff" opacity="0.47"/>
+        <circle cx="35" cy="42" r="0.075" fill="#fff" opacity="0.38"/><circle cx="92" cy="68" r="0.105" fill="#fff" opacity="0.4"/>
+        <circle cx="48" cy="8"  r="0.12" fill="#fff" opacity="0.44"/><circle cx="82" cy="90" r="0.09" fill="#fff" opacity="0.36"/>
+      </svg>
 
-        <div class="mandala-wrapper">
-          <canvas id="mandala-canvas"></canvas>
-          <p class="mandala-hint">Toca para resonar</p>
+      <!-- Header -->
+      <header class="home-header">
+        <div class="home-header-left">
+          <div class="date-label" id="date-label"></div>
+          <div class="grad-title grad-title--34" id="greeting"></div>
         </div>
-
-        <button class="sos-btn" id="btn-sos">
-          <div class="sos-inner">
-            <span class="sos-icon">⚡</span>
-            <div class="sos-text">
-              <span class="sos-main">Alivio Urgente</span>
-              <span class="sos-sub">3 minutos · Respiración de emergencia</span>
-            </div>
-            <span class="sos-arrow">→</span>
-          </div>
+        <button class="streak-pill" id="streak-badge" title="Tu racha">
+          <span class="streak-fire">🔥</span>
+          <span id="streak-count" class="streak-num">0</span>
         </button>
+      </header>
 
-        <section class="quick-section">
-          <h3 class="section-title">Sesiones Rápidas</h3>
-          <div class="quick-grid" id="quick-grid"></div>
-        </section>
-
-        <section class="quick-section">
-          <h3 class="section-title">Ambiente Sonoro</h3>
-          <div class="ambient-pills" id="ambient-pills"></div>
-        </section>
+      <!-- Sacred geometry centerpiece -->
+      <div class="home-geo-wrap">
+        <div class="home-geo" id="home-geo">
+          <!-- Canvas for audio reactivity -->
+          <canvas id="mandala-canvas" class="home-canvas"></canvas>
+          <!-- Mandala SVG (semi-transparent layer) -->
+          <div class="home-mandala-svg" id="home-mandala-svg"></div>
+          <!-- MetatronCube SVG (top layer, slow rotation) -->
+          <div class="home-metatron-svg anim-rotate-60" id="home-metatron-svg"></div>
+        </div>
+        <div class="geo-hint">Toca para resonar</div>
       </div>
+
+      <!-- SOS -->
+      <div class="px-22">
+        <button class="sos-card" id="btn-sos">
+          <div class="sos-icon-wrap">⚡</div>
+          <div class="sos-text">
+            <div class="sos-title">Alivio Urgente</div>
+            <div class="sos-sub">3 min · Respiración de emergencia</div>
+          </div>
+          <div class="sos-arrow">→</div>
+        </button>
+      </div>
+
+      <!-- Quick sessions -->
+      <div class="px-22 mt-18">
+        <div class="section-row">
+          <div class="section-label">Sesiones rápidas</div>
+          <button class="see-all" data-nav="sessions">Ver todas</button>
+        </div>
+        <div class="quick-grid" id="quick-grid"></div>
+      </div>
+
+      <!-- Ambient sound pills -->
+      <div class="mt-18">
+        <div class="section-label px-22">Ambiente sonoro</div>
+        <div class="ambient-scroll" id="ambient-pills"></div>
+      </div>
+
+      <div style="height:16px"></div>
     </div>
-
-    <!-- PANTALLA: SESIONES -->
-    <div id="screen-sessions" class="screen" data-screen="sessions">
-      <div class="screen-scroll">
-        <header class="page-header">
-          <h2>Sesiones</h2>
-          <p>Elige tu práctica</p>
-        </header>
-        <div class="filter-pills">
-          <button class="filter-pill active" data-filter="all">Todas</button>
-          <button class="filter-pill" data-filter="short">Cortas</button>
-          <button class="filter-pill" data-filter="long">Largas</button>
-          <button class="filter-pill" data-filter="stress">Estrés</button>
-        </div>
-        <div class="sessions-grid" id="sessions-grid"></div>
-      </div>
-    </div>
-
-    <!-- PANTALLA: SESIÓN ACTIVA (fullscreen) -->
-    <div id="screen-active" class="screen screen-fullscreen" data-screen="active">
-      <canvas id="session-bg-canvas"></canvas>
-
-      <!-- PRE: Check de ánimo -->
-      <div class="mood-gate" id="mood-gate">
-        <div class="mood-gate-content">
-          <div class="session-preview-icon" id="session-preview-icon">🧘</div>
-          <h2 id="session-preview-name">Sesión</h2>
-          <p id="session-preview-desc"></p>
-          <div class="mood-question">
-            <h3>¿Cómo llegas ahora?</h3>
-            <div class="mood-bar" id="mood-pre"></div>
-          </div>
-          <button class="btn-start" id="btn-start">Comenzar →</button>
-        </div>
-      </div>
-
-      <!-- SESIÓN EN CURSO -->
-      <div class="session-ui hidden" id="session-ui">
-        <button class="btn-close" id="btn-close">✕</button>
-
-        <div class="session-top">
-          <h3 id="active-session-name" class="active-name"></h3>
-          <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
-        </div>
-
-        <div class="breathing-zone">
-          <div class="breath-outer" id="breath-outer">
-            <div class="breath-circle" id="breath-circle">
-              <span class="breath-phase" id="breath-phase">Respira</span>
-              <span class="breath-num" id="breath-num"></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="instruction-box" id="instruction-box">
-          <p id="instruction-text" class="instruction-text"></p>
-        </div>
-
-        <div class="timer-zone">
-          <svg class="timer-svg" viewBox="0 0 140 140">
-            <circle class="timer-track" cx="70" cy="70" r="62"/>
-            <circle class="timer-arc" id="timer-arc" cx="70" cy="70" r="62"
-              stroke-dasharray="389.56" stroke-dashoffset="0"/>
-          </svg>
-          <div class="timer-text" id="timer-text">00:00</div>
-        </div>
-
-        <div class="session-bottom">
-          <button class="ctrl-btn" id="btn-pause-session" title="Pausar">⏸</button>
-          <canvas id="viz-canvas" class="viz-canvas" width="180" height="50"></canvas>
-          <button class="ctrl-btn" id="btn-skip-step" title="Siguiente paso">⏭</button>
-        </div>
-      </div>
-
-      <!-- POST: Sesión completada -->
-      <div class="session-complete hidden" id="session-complete">
-        <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
-        <div class="complete-card">
-          <div class="complete-emoji">🙏</div>
-          <h2>¡Sesión completada!</h2>
-          <div class="complete-stats">
-            <div class="cstat">
-              <span class="cstat-val" id="c-minutes">0</span>
-              <span class="cstat-lbl">minutos</span>
-            </div>
-            <div class="cstat-divider"></div>
-            <div class="cstat">
-              <span class="cstat-val" id="c-streak">0</span>
-              <span class="cstat-lbl">días seguidos</span>
-            </div>
-          </div>
-          <div class="mood-question">
-            <h3>¿Cómo te sientes ahora?</h3>
-            <div class="mood-bar" id="mood-post"></div>
-          </div>
-          <div class="mood-result" id="mood-result"></div>
-          <button class="btn-finish" id="btn-finish">Continuar ✨</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- PANTALLA: SONIDOS -->
-    <div id="screen-sounds" class="screen" data-screen="sounds">
-      <div class="screen-scroll">
-        <header class="page-header">
-          <h2>Sonidos</h2>
-          <p>Crea tu propio ambiente</p>
-        </header>
-
-        <div class="viz-container">
-          <canvas id="audio-viz-canvas" class="audio-viz" width="360" height="100"></canvas>
-          <p class="viz-hint" id="viz-hint">Activa un sonido para visualizar</p>
-        </div>
-
-        <h3 class="section-title">Naturaleza &amp; Ambiente</h3>
-        <div class="sounds-grid" id="sounds-grid"></div>
-
-        <div class="binaural-section">
-          <h3 class="section-title">Beats Binaurales</h3>
-          <div class="binaural-note">
-            <span>🎧</span>
-            <span>Usa auriculares para máximo efecto</span>
-          </div>
-          <div class="binaural-grid" id="binaural-grid"></div>
-        </div>
-
-        <div class="master-vol-section">
-          <label class="vol-label">Volumen maestro</label>
-          <div class="vol-row">
-            <span>🔈</span>
-            <input type="range" id="master-vol" class="vol-slider" min="0" max="100" value="70">
-            <span>🔊</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PANTALLA: PROGRESO -->
-    <div id="screen-progress" class="screen" data-screen="progress">
-      <div class="screen-scroll">
-        <header class="page-header">
-          <h2>Tu Progreso</h2>
-          <p id="progress-subtitle">Sigue creciendo</p>
-        </header>
-
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-ico">🔥</div>
-            <div class="stat-num" id="p-streak">0</div>
-            <div class="stat-lbl">Racha actual</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-ico">⏱</div>
-            <div class="stat-num" id="p-time">0</div>
-            <div class="stat-lbl">Minutos totales</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-ico">🧘</div>
-            <div class="stat-num" id="p-sessions">0</div>
-            <div class="stat-lbl">Sesiones</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-ico">😌</div>
-            <div class="stat-num" id="p-mood">—</div>
-            <div class="stat-lbl">Mejora de ánimo</div>
-          </div>
-        </div>
-
-        <section class="achievements-section">
-          <h3 class="section-title">Logros</h3>
-          <div class="achievements-grid" id="achievements-grid"></div>
-        </section>
-
-        <section class="history-section">
-          <h3 class="section-title">Historial reciente</h3>
-          <div class="history-list" id="history-list">
-            <p class="empty-state">Aún no hay sesiones. ¡Empieza hoy!</p>
-          </div>
-        </section>
-      </div>
-    </div>
-
-    <!-- NAVEGACIÓN INFERIOR -->
-    <nav class="bottom-nav">
-      <button class="nav-btn active" data-nav="home">
-        <span class="nav-ico">◯</span>
-        <span class="nav-lbl">Inicio</span>
-      </button>
-      <button class="nav-btn" data-nav="sessions">
-        <span class="nav-ico">🧘</span>
-        <span class="nav-lbl">Sesiones</span>
-      </button>
-      <button class="nav-btn" data-nav="sounds">
-        <span class="nav-ico">🎵</span>
-        <span class="nav-lbl">Sonidos</span>
-      </button>
-      <button class="nav-btn" data-nav="progress">
-        <span class="nav-ico">✦</span>
-        <span class="nav-lbl">Progreso</span>
-      </button>
-    </nav>
   </div>
 
-  <script src="js/audio.js"></script>
-  <script src="js/animations.js"></script>
-  <script src="js/sessions.js"></script>
-  <script src="js/tracker.js"></script>
-  <script src="js/app.js"></script>
+  <!-- ── SESSIONS ──────────────────────────────────── -->
+  <div id="screen-sessions" class="screen" data-screen="sessions">
+    <div class="screen-scroll">
+      <div class="zbg zbg--sessions"></div>
+      <svg class="stars-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <circle cx="78" cy="14" r="0.165" fill="#fff" opacity="0.5"/><circle cx="28" cy="22" r="0.09" fill="#fff" opacity="0.4"/>
+        <circle cx="88" cy="40" r="0.12" fill="#fff" opacity="0.44"/><circle cx="62" cy="88" r="0.15" fill="#fff" opacity="0.5"/>
+      </svg>
+
+      <div class="px-22 pt-8">
+        <div class="grad-title grad-title--38">Sesiones</div>
+        <div class="page-sub">Elige tu práctica</div>
+      </div>
+
+      <div class="filter-row" id="filter-row">
+        <button class="filter-pill active" data-filter="all">Todas</button>
+        <button class="filter-pill" data-filter="short">Cortas</button>
+        <button class="filter-pill" data-filter="long">Largas</button>
+        <button class="filter-pill" data-filter="stress">Estrés</button>
+      </div>
+
+      <div class="sessions-grid px-22" id="sessions-grid"></div>
+      <div style="height:16px"></div>
+    </div>
+  </div>
+
+  <!-- ── ACTIVE SESSION (fullscreen) ──────────────── -->
+  <div id="screen-active" class="screen screen-full" data-screen="active">
+    <div class="zbg zbg--session"></div>
+    <canvas id="session-bg-canvas" class="session-bg-canvas"></canvas>
+
+    <!-- Mood gate -->
+    <div class="mood-gate" id="mood-gate">
+      <div class="mood-gate-inner">
+        <div class="session-preview-icon" id="session-preview-icon">🧘</div>
+        <div class="grad-title grad-title--28" id="session-preview-name"></div>
+        <div class="session-preview-desc" id="session-preview-desc"></div>
+        <div class="mood-gate-q">
+          <div class="mood-q-label">¿Cómo llegas ahora?</div>
+          <div class="mood-bar" id="mood-pre"></div>
+        </div>
+        <button class="btn-start" id="btn-start">Comenzar →</button>
+      </div>
+    </div>
+
+    <!-- Session UI -->
+    <div class="session-ui hidden" id="session-ui">
+      <button class="btn-close" id="btn-close">
+        <svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="#f1f5f9" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+
+      <div class="session-top-bar">
+        <div class="session-name-label" id="active-session-name"></div>
+        <div class="prog-track">
+          <div class="prog-fill" id="prog-fill"></div>
+        </div>
+      </div>
+
+      <!-- Flower of Life backdrop (inscribed in breath zone) -->
+      <div class="fol-session-wrap" id="fol-session"></div>
+
+      <div class="breath-zone">
+        <div class="breath-outer" id="breath-outer">
+          <!-- MetatronCube inscribed inside circle -->
+          <div class="breath-metatron" id="breath-metatron"></div>
+          <div class="breath-circle" id="breath-circle">
+            <div class="breath-highlight"></div>
+            <div class="breath-phase" id="breath-phase">INHALA</div>
+            <div class="breath-num" id="breath-num">4</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="instruction-card" id="instruction-card">
+        <p class="instruction-text" id="instruction-text"></p>
+      </div>
+
+      <!-- Circular timer -->
+      <div class="timer-wrap">
+        <svg class="timer-svg" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+          <circle class="timer-track" cx="50" cy="50" r="44"/>
+          <circle class="timer-arc" id="timer-arc" cx="50" cy="50" r="44"
+            stroke-dasharray="276.46" stroke-dashoffset="0"
+            transform="rotate(-90 50 50)"/>
+          <text x="50" y="47" text-anchor="middle" class="timer-time" id="timer-text">0:00</text>
+          <text x="50" y="62" text-anchor="middle" class="timer-restante">RESTANTE</text>
+        </svg>
+      </div>
+
+      <!-- Controls -->
+      <div class="session-controls">
+        <button class="ctrl-play" id="btn-pause-session" title="Pausar/Reanudar">
+          <svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="2" width="4.5" height="14" rx="1" fill="#fff"/><rect x="11.5" y="2" width="4.5" height="14" rx="1" fill="#fff"/></svg>
+        </button>
+        <div class="audio-bars-pill">
+          <canvas id="viz-canvas" width="180" height="36"></canvas>
+        </div>
+        <button class="ctrl-skip" id="btn-skip-step" title="Siguiente paso">
+          <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2l8 6-8 6V2z" fill="#f1f5f9"/><rect x="11.5" y="2" width="2.5" height="12" rx="0.5" fill="#f1f5f9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Session complete -->
+    <div class="session-complete hidden" id="session-complete">
+      <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+      <!-- Metatron behind modal -->
+      <div class="complete-metatron" id="complete-metatron"></div>
+      <div class="complete-modal">
+        <div class="complete-emoji">🙏</div>
+        <div class="grad-title grad-title--32">¡Sesión completada!</div>
+        <div class="complete-sub">Has cultivado un momento de paz</div>
+        <div class="complete-stats">
+          <div class="cstat">
+            <div class="cstat-num grad-gold" id="c-minutes">0</div>
+            <div class="cstat-lbl">MINUTOS</div>
+          </div>
+          <div class="cstat-sep"></div>
+          <div class="cstat">
+            <div class="cstat-num grad-gold" id="c-streak">0</div>
+            <div class="cstat-lbl">DÍAS SEGUIDOS</div>
+          </div>
+        </div>
+        <div class="mood-q-label italic mt-22">¿Cómo te sientes ahora?</div>
+        <div class="mood-bar mt-12" id="mood-post"></div>
+        <div class="mood-result hidden" id="mood-result"></div>
+        <button class="btn-continue" id="btn-finish">Continuar ✨</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SOUNDS ─────────────────────────────────────── -->
+  <div id="screen-sounds" class="screen" data-screen="sounds">
+    <div class="screen-scroll">
+      <div class="zbg zbg--sounds"></div>
+      <svg class="stars-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <circle cx="55" cy="30" r="0.105" fill="#fff" opacity="0.44"/><circle cx="18" cy="82" r="0.105" fill="#fff" opacity="0.4"/>
+        <circle cx="92" cy="68" r="0.105" fill="#fff" opacity="0.4"/><circle cx="48" cy="8" r="0.12" fill="#fff" opacity="0.44"/>
+      </svg>
+
+      <div class="px-22 pt-8">
+        <div class="grad-title grad-title--38">Sonidos</div>
+        <div class="page-sub">Crea tu propio ambiente</div>
+      </div>
+
+      <!-- Freq visualizer -->
+      <div class="freq-viz-wrap">
+        <div class="freq-viz-svg" id="freq-viz-svg"></div>
+      </div>
+
+      <!-- Nature grid -->
+      <div class="px-22">
+        <div class="section-label mb-8">Naturaleza &amp; Ambiente</div>
+        <div class="nature-grid" id="sounds-grid"></div>
+      </div>
+
+      <!-- Binaural -->
+      <div class="px-22 mt-12">
+        <div class="binaural-header">
+          <div class="section-label">Beats binaurales</div>
+          <div class="binaural-pill">🎧 Usa auriculares</div>
+        </div>
+        <div class="binaural-list" id="binaural-grid"></div>
+      </div>
+
+      <!-- Volume -->
+      <div class="px-22 mt-12">
+        <div class="vol-header">
+          <div class="section-label">Volumen maestro</div>
+          <div class="vol-pct" id="vol-pct">70%</div>
+        </div>
+        <div class="vol-track-wrap">
+          <div class="vol-track">
+            <div class="vol-fill" id="vol-fill" style="width:70%"></div>
+            <div class="vol-thumb" id="vol-thumb" style="left:calc(70% - 9px)"></div>
+          </div>
+          <input type="range" id="master-vol" class="vol-input" min="0" max="100" value="70">
+        </div>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+  </div>
+
+  <!-- ── PROGRESS ───────────────────────────────────── -->
+  <div id="screen-progress" class="screen" data-screen="progress">
+    <div class="screen-scroll">
+      <div class="zbg zbg--progress"></div>
+      <svg class="stars-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <circle cx="12" cy="8" r="0.15" fill="#fff" opacity="0.5"/><circle cx="62" cy="88" r="0.15" fill="#fff" opacity="0.5"/>
+        <circle cx="42" cy="62" r="0.09" fill="#fff" opacity="0.4"/><circle cx="82" cy="90" r="0.09" fill="#fff" opacity="0.36"/>
+      </svg>
+
+      <div class="px-22 pt-8">
+        <div class="grad-title grad-title--38">Tu Progreso</div>
+        <div class="page-sub" id="progress-subtitle">Mayo · Una práctica constante</div>
+      </div>
+
+      <div class="stats-grid px-22 mt-18">
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="section-label">Racha</div><span class="stat-ico">🔥</span></div>
+          <div class="stat-num grad-gold-violet" id="p-streak">0</div>
+          <div class="stat-sub">días</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="section-label">Minutos</div><span class="stat-ico">⏱</span></div>
+          <div class="stat-num grad-gold-violet" id="p-time">0</div>
+          <div class="stat-sub">totales</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="section-label">Sesiones</div><span class="stat-ico">🧘</span></div>
+          <div class="stat-num grad-gold-violet" id="p-sessions">0</div>
+          <div class="stat-sub">completas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><div class="section-label">Ánimo</div><span class="stat-ico">😌</span></div>
+          <div class="stat-num grad-gold-violet" id="p-mood">—</div>
+          <div class="stat-sub">este mes</div>
+        </div>
+      </div>
+
+      <div class="px-22 mt-18">
+        <div class="section-label mb-10">Logros</div>
+        <div class="badges-grid" id="achievements-grid"></div>
+      </div>
+
+      <div class="px-22 mt-18">
+        <div class="section-label mb-10">Historial reciente</div>
+        <div class="history-list" id="history-list">
+          <div class="empty-msg">Aún no hay sesiones. ¡Empieza hoy!</div>
+        </div>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM NAV (pill) ──────────────────────────── -->
+  <nav class="bottom-nav-pill" id="bottom-nav">
+    <button class="nav-item active" data-nav="home">
+      <div class="nav-item-active-bar"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M3 11l9-7 9 7v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1V11z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <span>Inicio</span>
+    </button>
+    <button class="nav-item" data-nav="sessions">
+      <div class="nav-item-active-bar"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <span>Sesiones</span>
+    </button>
+    <button class="nav-item" data-nav="sounds">
+      <div class="nav-item-active-bar"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M4 10v4h3l5 4V6L7 10H4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M16 8c1.5 1.2 2.4 2.6 2.4 4S17.5 14.8 16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <span>Sonidos</span>
+    </button>
+    <button class="nav-item" data-nav="progress">
+      <div class="nav-item-active-bar"></div>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M4 18l5-6 4 3 7-9" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+      <span>Progreso</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<script src="js/audio.js"></script>
+<script src="js/animations.js"></script>
+<script src="js/sessions.js"></script>
+<script src="js/tracker.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

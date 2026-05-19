@@ -139,8 +139,8 @@ const ZenTracker = (() => {
     ACHIEVEMENTS.forEach(ach => {
       const el = document.createElement('div');
       const unlocked = data.achievements.includes(ach.id);
-      el.className = `achievement ${unlocked ? 'unlocked' : 'locked'}`;
-      el.innerHTML = `<span class="ach-ico">${ach.icon}</span><span class="ach-name">${ach.name}</span>`;
+      el.className = `badge ${unlocked ? 'unlocked' : 'locked'}`;
+      el.innerHTML = `<span class="badge-ico">${ach.icon}</span><span class="badge-name">${ach.name}</span>`;
       el.title = ach.desc;
       container.appendChild(el);
     });
@@ -159,8 +159,8 @@ const ZenTracker = (() => {
         ? `${MOODS[h.moodBefore]}→${MOODS[h.moodAfter]}`
         : '';
       return `
-        <div class="history-item">
-          <span class="hist-icon">${h.emoji}</span>
+        <div class="hist-item">
+          <div class="hist-ico-wrap">${h.emoji}</div>
           <div class="hist-info">
             <span class="hist-name">${h.name}</span>
             <span class="hist-meta">${formatDate(h.date)} · ${h.minutes} min</span>
