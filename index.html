@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#080818">
+  <meta name="description" content="ZenFlow — Tu compañero de meditación activa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZenFlow">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <title>ZenFlow — Meditación Activa</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- PANTALLA DE INICIO -->
+  <div id="splash" class="splash">
+    <canvas id="splash-canvas"></canvas>
+    <div class="splash-content">
+      <div class="splash-logo">
+        <svg class="splash-symbol" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(124,58,237,0.6)" stroke-width="1.5"/>
+          <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(124,58,237,0.4)" stroke-width="1"/>
+          <circle cx="50" cy="50" r="15" fill="rgba(124,58,237,0.2)" stroke="rgba(245,166,35,0.8)" stroke-width="1.5"/>
+          <path d="M50 5 L53 47 L50 50 L47 47 Z" fill="rgba(245,166,35,0.6)"/>
+          <path d="M95 50 L53 53 L50 50 L53 47 Z" fill="rgba(245,166,35,0.4)"/>
+          <path d="M50 95 L47 53 L50 50 L53 53 Z" fill="rgba(245,166,35,0.6)"/>
+          <path d="M5 50 L47 47 L50 50 L47 53 Z" fill="rgba(245,166,35,0.4)"/>
+        </svg>
+        <h1 class="splash-title">ZenFlow</h1>
+        <p class="splash-subtitle">Meditación Activa</p>
+      </div>
+      <button id="btn-despertar" class="btn-despertar">
+        <span class="btn-ring ring-1"></span>
+        <span class="btn-ring ring-2"></span>
+        <span class="btn-ring ring-3"></span>
+        <span class="btn-text">✦ Toca para despertar</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- APP PRINCIPAL -->
+  <div id="app" class="app hidden">
+
+    <!-- PANTALLA: INICIO -->
+    <div id="screen-home" class="screen active" data-screen="home">
+      <div class="screen-scroll">
+        <header class="app-header">
+          <div id="greeting" class="greeting"></div>
+          <button class="streak-badge" id="streak-badge" title="Tu racha">
+            <span class="streak-fire">🔥</span>
+            <span id="streak-count">0</span>
+            <span class="streak-label">días</span>
+          </button>
+        </header>
+
+        <div class="mandala-wrapper">
+          <canvas id="mandala-canvas"></canvas>
+          <p class="mandala-hint">Toca para resonar</p>
+        </div>
+
+        <button class="sos-btn" id="btn-sos">
+          <div class="sos-inner">
+            <span class="sos-icon">⚡</span>
+            <div class="sos-text">
+              <span class="sos-main">Alivio Urgente</span>
+              <span class="sos-sub">3 minutos · Respiración de emergencia</span>
+            </div>
+            <span class="sos-arrow">→</span>
+          </div>
+        </button>
+
+        <section class="quick-section">
+          <h3 class="section-title">Sesiones Rápidas</h3>
+          <div class="quick-grid" id="quick-grid"></div>
+        </section>
+
+        <section class="quick-section">
+          <h3 class="section-title">Ambiente Sonoro</h3>
+          <div class="ambient-pills" id="ambient-pills"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- PANTALLA: SESIONES -->
+    <div id="screen-sessions" class="screen" data-screen="sessions">
+      <div class="screen-scroll">
+        <header class="page-header">
+          <h2>Sesiones</h2>
+          <p>Elige tu práctica</p>
+        </header>
+        <div class="filter-pills">
+          <button class="filter-pill active" data-filter="all">Todas</button>
+          <button class="filter-pill" data-filter="short">Cortas</button>
+          <button class="filter-pill" data-filter="long">Largas</button>
+          <button class="filter-pill" data-filter="stress">Estrés</button>
+        </div>
+        <div class="sessions-grid" id="sessions-grid"></div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: SESIÓN ACTIVA (fullscreen) -->
+    <div id="screen-active" class="screen screen-fullscreen" data-screen="active">
+      <canvas id="session-bg-canvas"></canvas>
+
+      <!-- PRE: Check de ánimo -->
+      <div class="mood-gate" id="mood-gate">
+        <div class="mood-gate-content">
+          <div class="session-preview-icon" id="session-preview-icon">🧘</div>
+          <h2 id="session-preview-name">Sesión</h2>
+          <p id="session-preview-desc"></p>
+          <div class="mood-question">
+            <h3>¿Cómo llegas ahora?</h3>
+            <div class="mood-bar" id="mood-pre"></div>
+          </div>
+          <button class="btn-start" id="btn-start">Comenzar →</button>
+        </div>
+      </div>
+
+      <!-- SESIÓN EN CURSO -->
+      <div class="session-ui hidden" id="session-ui">
+        <button class="btn-close" id="btn-close">✕</button>
+
+        <div class="session-top">
+          <h3 id="active-session-name" class="active-name"></h3>
+          <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+        </div>
+
+        <div class="breathing-zone">
+          <div class="breath-outer" id="breath-outer">
+            <div class="breath-circle" id="breath-circle">
+              <span class="breath-phase" id="breath-phase">Respira</span>
+              <span class="breath-num" id="breath-num"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="instruction-box" id="instruction-box">
+          <p id="instruction-text" class="instruction-text"></p>
+        </div>
+
+        <div class="timer-zone">
+          <svg class="timer-svg" viewBox="0 0 140 140">
+            <circle class="timer-track" cx="70" cy="70" r="62"/>
+            <circle class="timer-arc" id="timer-arc" cx="70" cy="70" r="62"
+              stroke-dasharray="389.56" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-text" id="timer-text">00:00</div>
+        </div>
+
+        <div class="session-bottom">
+          <button class="ctrl-btn" id="btn-pause-session" title="Pausar">⏸</button>
+          <canvas id="viz-canvas" class="viz-canvas" width="180" height="50"></canvas>
+          <button class="ctrl-btn" id="btn-skip-step" title="Siguiente paso">⏭</button>
+        </div>
+      </div>
+
+      <!-- POST: Sesión completada -->
+      <div class="session-complete hidden" id="session-complete">
+        <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+        <div class="complete-card">
+          <div class="complete-emoji">🙏</div>
+          <h2>¡Sesión completada!</h2>
+          <div class="complete-stats">
+            <div class="cstat">
+              <span class="cstat-val" id="c-minutes">0</span>
+              <span class="cstat-lbl">minutos</span>
+            </div>
+            <div class="cstat-divider"></div>
+            <div class="cstat">
+              <span class="cstat-val" id="c-streak">0</span>
+              <span class="cstat-lbl">días seguidos</span>
+            </div>
+          </div>
+          <div class="mood-question">
+            <h3>¿Cómo te sientes ahora?</h3>
+            <div class="mood-bar" id="mood-post"></div>
+          </div>
+          <div class="mood-result" id="mood-result"></div>
+          <button class="btn-finish" id="btn-finish">Continuar ✨</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: SONIDOS -->
+    <div id="screen-sounds" class="screen" data-screen="sounds">
+      <div class="screen-scroll">
+        <header class="page-header">
+          <h2>Sonidos</h2>
+          <p>Crea tu propio ambiente</p>
+        </header>
+
+        <div class="viz-container">
+          <canvas id="audio-viz-canvas" class="audio-viz" width="360" height="100"></canvas>
+          <p class="viz-hint" id="viz-hint">Activa un sonido para visualizar</p>
+        </div>
+
+        <h3 class="section-title">Naturaleza &amp; Ambiente</h3>
+        <div class="sounds-grid" id="sounds-grid"></div>
+
+        <div class="binaural-section">
+          <h3 class="section-title">Beats Binaurales</h3>
+          <div class="binaural-note">
+            <span>🎧</span>
+            <span>Usa auriculares para máximo efecto</span>
+          </div>
+          <div class="binaural-grid" id="binaural-grid"></div>
+        </div>
+
+        <div class="master-vol-section">
+          <label class="vol-label">Volumen maestro</label>
+          <div class="vol-row">
+            <span>🔈</span>
+            <input type="range" id="master-vol" class="vol-slider" min="0" max="100" value="70">
+            <span>🔊</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: PROGRESO -->
+    <div id="screen-progress" class="screen" data-screen="progress">
+      <div class="screen-scroll">
+        <header class="page-header">
+          <h2>Tu Progreso</h2>
+          <p id="progress-subtitle">Sigue creciendo</p>
+        </header>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-ico">🔥</div>
+            <div class="stat-num" id="p-streak">0</div>
+            <div class="stat-lbl">Racha actual</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-ico">⏱</div>
+            <div class="stat-num" id="p-time">0</div>
+            <div class="stat-lbl">Minutos totales</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-ico">🧘</div>
+            <div class="stat-num" id="p-sessions">0</div>
+            <div class="stat-lbl">Sesiones</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-ico">😌</div>
+            <div class="stat-num" id="p-mood">—</div>
+            <div class="stat-lbl">Mejora de ánimo</div>
+          </div>
+        </div>
+
+        <section class="achievements-section">
+          <h3 class="section-title">Logros</h3>
+          <div class="achievements-grid" id="achievements-grid"></div>
+        </section>
+
+        <section class="history-section">
+          <h3 class="section-title">Historial reciente</h3>
+          <div class="history-list" id="history-list">
+            <p class="empty-state">Aún no hay sesiones. ¡Empieza hoy!</p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- NAVEGACIÓN INFERIOR -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-nav="home">
+        <span class="nav-ico">◯</span>
+        <span class="nav-lbl">Inicio</span>
+      </button>
+      <button class="nav-btn" data-nav="sessions">
+        <span class="nav-ico">🧘</span>
+        <span class="nav-lbl">Sesiones</span>
+      </button>
+      <button class="nav-btn" data-nav="sounds">
+        <span class="nav-ico">🎵</span>
+        <span class="nav-lbl">Sonidos</span>
+      </button>
+      <button class="nav-btn" data-nav="progress">
+        <span class="nav-ico">✦</span>
+        <span class="nav-lbl">Progreso</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/sessions.js"></script>
+  <script src="js/tracker.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
