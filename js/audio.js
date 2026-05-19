@@ -79,44 +79,104 @@ const ZenAudio = (() => {
     return nodes;
   }
 
-  // ---- Tambor chamánico ----
-  function createDrum(bpm = 60) {
+  // ---- Tambor chamánico (frame drum sintetizado) ----
+  function createDrum(bpm = 210) {
     if (!ctx) return null;
-    const intervalMs = 60000 / bpm;
     let running = true;
+    let nextTime = 0;
+    let timer = null;
 
-    function hit() {
-      if (!running || !ctx) return;
-      const t = ctx.currentTime;
-      const bufSize = Math.floor(ctx.sampleRate * 0.6);
-      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-      const data = buf.getChannelData(0);
+    // Un golpe completo: cuerpo resonante + ataque de piel + armónico
+    function hit(t, velocity = 1) {
+      // 1) Cuerpo del tambor — sine grave con pitch-down (la piel "se asienta")
+      const body = ctx.createOscillator();
+      body.type = 'sine';
+      body.frequency.setValueAtTime(140 + (Math.random() - 0.5) * 12, t);
+      body.frequency.exponentialRampToValueAtTime(58, t + 0.18);
 
-      for (let i = 0; i < bufSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 5);
+      const bodyGain = ctx.createGain();
+      bodyGain.gain.setValueAtTime(0, t);
+      bodyGain.gain.linearRampToValueAtTime(0.95 * velocity, t + 0.005);
+      bodyGain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+
+      body.connect(bodyGain);
+      bodyGain.connect(masterGain);
+      body.start(t);
+      body.stop(t + 1.05);
+
+      // 2) Armónico medio — segundo tono que da "cuerpo de madera"
+      const harm = ctx.createOscillator();
+      harm.type = 'triangle';
+      harm.frequency.setValueAtTime(220 + (Math.random() - 0.5) * 20, t);
+      harm.frequency.exponentialRampToValueAtTime(110, t + 0.12);
+
+      const harmGain = ctx.createGain();
+      harmGain.gain.setValueAtTime(0, t);
+      harmGain.gain.linearRampToValueAtTime(0.25 * velocity, t + 0.004);
+      harmGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+      harm.connect(harmGain);
+      harmGain.connect(masterGain);
+      harm.start(t);
+      harm.stop(t + 0.5);
+
+      // 3) Ataque — ruido corto filtrado (el "tac" inicial de la piel)
+      const noiseLen = Math.floor(ctx.sampleRate * 0.08);
+      const nb = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+      const nd = nb.getChannelData(0);
+      for (let i = 0; i < noiseLen; i++) {
+        nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / noiseLen, 3);
       }
+      const noise = ctx.createBufferSource();
+      noise.buffer = nb;
 
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 320;
+      bp.Q.value = 1.4;
 
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 180;
-      lp.Q.value = 0.8;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.55 * velocity, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
 
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(1, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      noise.connect(bp);
+      bp.connect(noiseGain);
+      noiseGain.connect(masterGain);
+      noise.start(t);
 
-      src.connect(lp);
-      lp.connect(g);
-      g.connect(masterGain);
-      src.start(t);
+      // 4) Resonancia subgrave — el "boom" de la caja
+      const sub = ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.value = 48;
+      const subGain = ctx.createGain();
+      subGain.gain.setValueAtTime(0, t);
+      subGain.gain.linearRampToValueAtTime(0.4 * velocity, t + 0.01);
+      subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+
+      sub.connect(subGain);
+      subGain.connect(masterGain);
+      sub.start(t);
+      sub.stop(t + 0.75);
     }
 
-    hit();
-    const timer = setInterval(() => { if (running) hit(); }, intervalMs);
-    return { stop: () => { running = false; clearInterval(timer); } };
+    // Scheduler look-ahead: programa los siguientes golpes con humanización
+    const interval = 60 / bpm;
+    nextTime = ctx.currentTime + 0.1;
+
+    function scheduler() {
+      if (!running) return;
+      while (nextTime < ctx.currentTime + 0.25) {
+        // Humanización: timing ±15 ms, velocidad ligeramente variable
+        const jitter = (Math.random() - 0.5) * 0.03;
+        const vel = 0.85 + Math.random() * 0.25;
+        hit(Math.max(ctx.currentTime, nextTime + jitter), vel);
+        nextTime += interval;
+      }
+    }
+
+    scheduler();
+    timer = setInterval(scheduler, 50);
+    return { stop: () => { running = false; if (timer) clearInterval(timer); } };
   }
 
   // ---- Lluvia ----
@@ -426,7 +486,7 @@ const ZenAudio = (() => {
     fire:   { label: 'Hoguera',    icon: '🔥',  create: () => createFire() },
     bowl1:  { label: 'Cuenco 432', icon: '🔔',  create: () => createBowlLoop(432, 10) },
     bowl2:  { label: 'Cuenco 528', icon: '🪘',  create: () => createBowlLoop(528, 8) },
-    drum:   { label: 'Tambores',   icon: '🥁',  create: () => createDrum(72) },
+    drum:   { label: 'Tambor chamánico', icon: '🥁', create: () => createDrum(210) },
     pad:    { label: 'Ambiente',   icon: '🎹',  create: () => createAmbientPad() },
   };
 
