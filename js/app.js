@@ -26,6 +26,7 @@
   function onWake() {
     ZenAudio.init();
     ZenAudio.resume();
+    ZenVoice.init();
     ZenAudio.playBowl(432, 5);
     if (navigator.vibrate) navigator.vibrate([30, 20, 60]);
 
@@ -397,6 +398,23 @@
     document.getElementById('btn-pause-session').addEventListener('click', togglePause);
     document.getElementById('btn-skip-step').addEventListener('click', () => ZenSessions.skipStep());
     document.getElementById('btn-finish').addEventListener('click', finishSession);
+
+    // Toggle de voz narrada
+    const voiceBtn = document.getElementById('btn-voice');
+    if (voiceBtn) {
+      // Estado inicial
+      if (!ZenVoice.hasSupport()) {
+        voiceBtn.style.display = 'none';
+      } else {
+        voiceBtn.classList.toggle('muted', !ZenVoice.isEnabled());
+        voiceBtn.addEventListener('click', () => {
+          const newState = !ZenVoice.isEnabled();
+          ZenVoice.setEnabled(newState);
+          voiceBtn.classList.toggle('muted', !newState);
+          if (!newState) ZenVoice.stop();
+        });
+      }
+    }
   }
 
   function openSession(sessionId) {
@@ -441,7 +459,12 @@
         const box = document.getElementById('instruction-text');
         if (box) {
           box.classList.add('fade');
-          setTimeout(() => { box.textContent = step.text; box.classList.remove('fade'); }, 400);
+          setTimeout(() => {
+            box.textContent = step.text;
+            box.classList.remove('fade');
+            // Narrar el paso con voz natural (esperar al fade-in)
+            ZenVoice.speak(step.text);
+          }, 400);
         }
 
         const numEl = document.getElementById('breath-num');
@@ -475,6 +498,7 @@
   function togglePause() {
     const btn = document.getElementById('btn-pause-session');
     const paused = ZenSessions.togglePause();
+    if (paused) ZenVoice.stop();
     btn.innerHTML = paused
       ? '<svg width="18" height="18" viewBox="0 0 18 18"><path d="M4 3l11 6-11 6V3z" fill="#fff"/></svg>'
       : '<svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="2" width="4.5" height="14" rx="1" fill="#fff"/><rect x="11.5" y="2" width="4.5" height="14" rx="1" fill="#fff"/></svg>';
@@ -482,6 +506,7 @@
 
   function closeSession() {
     ZenSessions.stop();
+    ZenVoice.stop();
     ZenAnim.stopSessionBg();
     ZenAnim.stopViz();
     document.getElementById('screen-active').classList.remove('active');

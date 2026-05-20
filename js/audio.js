@@ -179,200 +179,405 @@ const ZenAudio = (() => {
     return { stop: () => { running = false; if (timer) clearInterval(timer); } };
   }
 
-  // ---- Lluvia ----
+  // ---- Lluvia (3 capas: lluvia distante + medianas + gotas cercanas) ----
   function createRain(intensity = 0.6) {
     if (!ctx) return null;
-    const bufSize = ctx.sampleRate * 4;
-    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
-
-    for (let ch = 0; ch < 2; ch++) {
-      const data = buf.getChannelData(ch);
-      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-    }
-
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 600;
-
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 14000;
-
-    const g = ctx.createGain();
-    g.gain.value = intensity * 0.4;
-
-    // LFO para variación de intensidad
-    const lfo = ctx.createOscillator();
-    const lfoG = ctx.createGain();
-    lfo.frequency.value = 0.08;
-    lfoG.gain.value = 0.1;
-    lfo.connect(lfoG);
-    lfoG.connect(g.gain);
-    lfo.start();
-
-    src.connect(hp);
-    hp.connect(lp);
-    lp.connect(g);
-    g.connect(masterGain);
-    src.start();
-
-    return { stop: () => { src.stop(); lfo.stop(); } };
-  }
-
-  // ---- Océano ----
-  function createOcean() {
-    if (!ctx) return null;
-    const bufSize = ctx.sampleRate * 4;
-    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-      const data = buf.getChannelData(ch);
-      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-    }
-
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 800;
-
-    const g = ctx.createGain();
-    g.gain.value = 0.5;
-
-    // Olas — LFO lento sobre el filtro
-    const lfo1 = ctx.createOscillator();
-    const lfoG1 = ctx.createGain();
-    lfo1.frequency.value = 0.12;
-    lfoG1.gain.value = 400;
-    lfo1.connect(lfoG1);
-    lfoG1.connect(lp.frequency);
-    lfo1.start();
-
-    // LFO de volumen para simular olas
-    const lfo2 = ctx.createOscillator();
-    const lfoG2 = ctx.createGain();
-    lfo2.frequency.value = 0.08;
-    lfoG2.gain.value = 0.2;
-    lfo2.connect(lfoG2);
-    lfoG2.connect(g.gain);
-    lfo2.start();
-
-    src.connect(lp);
-    lp.connect(g);
-    g.connect(masterGain);
-    src.start();
-
-    return { stop: () => { src.stop(); lfo1.stop(); lfo2.stop(); } };
-  }
-
-  // ---- Bosque (pájaros + viento) ----
-  function createForest() {
-    if (!ctx) return null;
     const nodes = [];
+    let running = true;
 
-    // Viento de fondo
-    const bSize = ctx.sampleRate * 4;
-    const bBuf = ctx.createBuffer(1, bSize, ctx.sampleRate);
-    const bData = bBuf.getChannelData(0);
-    for (let i = 0; i < bSize; i++) bData[i] = Math.random() * 2 - 1;
-    const wind = ctx.createBufferSource();
-    wind.buffer = bBuf;
-    wind.loop = true;
-    const windLp = ctx.createBiquadFilter();
-    windLp.type = 'bandpass';
-    windLp.frequency.value = 300;
-    windLp.Q.value = 0.3;
-    const windG = ctx.createGain();
-    windG.gain.value = 0.08;
-    wind.connect(windLp);
-    windLp.connect(windG);
-    windG.connect(masterGain);
-    wind.start();
-    nodes.push({ stop: () => wind.stop() });
+    // CAPA 1: lluvia distante (constante, ruido filtrado alto)
+    function makeNoiseBuffer(seconds = 6, stereo = true) {
+      const sz = ctx.sampleRate * seconds;
+      const b = ctx.createBuffer(stereo ? 2 : 1, sz, ctx.sampleRate);
+      for (let ch = 0; ch < b.numberOfChannels; ch++) {
+        const d = b.getChannelData(ch);
+        for (let i = 0; i < sz; i++) d[i] = Math.random() * 2 - 1;
+      }
+      return b;
+    }
 
-    // Pájaros — osciladores aleatorios
-    function chirp() {
-      if (!ctx) return;
+    const distant = ctx.createBufferSource();
+    distant.buffer = makeNoiseBuffer(6, true);
+    distant.loop = true;
+    const distHp = ctx.createBiquadFilter();
+    distHp.type = 'highpass'; distHp.frequency.value = 1200;
+    const distLp = ctx.createBiquadFilter();
+    distLp.type = 'lowpass'; distLp.frequency.value = 9000;
+    const distG = ctx.createGain();
+    distG.gain.value = intensity * 0.25;
+
+    // LFO suave de intensidad (la lluvia "respira")
+    const distLfo = ctx.createOscillator();
+    const distLfoG = ctx.createGain();
+    distLfo.frequency.value = 0.05;
+    distLfoG.gain.value = 0.06;
+    distLfo.connect(distLfoG);
+    distLfoG.connect(distG.gain);
+
+    distant.connect(distHp);
+    distHp.connect(distLp);
+    distLp.connect(distG);
+    distG.connect(masterGain);
+    distant.start();
+    distLfo.start();
+    nodes.push({ stop: () => { distant.stop(); distLfo.stop(); } });
+
+    // CAPA 2: lluvia media (más cuerpo, hiss continuo de gotas)
+    const mid = ctx.createBufferSource();
+    mid.buffer = makeNoiseBuffer(5, true);
+    mid.loop = true;
+    const midBp = ctx.createBiquadFilter();
+    midBp.type = 'bandpass'; midBp.frequency.value = 3500; midBp.Q.value = 0.4;
+    const midG = ctx.createGain();
+    midG.gain.value = intensity * 0.18;
+
+    mid.connect(midBp);
+    midBp.connect(midG);
+    midG.connect(masterGain);
+    mid.start();
+    nodes.push({ stop: () => mid.stop() });
+
+    // CAPA 3: gotas individuales (eventos puntuales sobre superficies)
+    function dropletEvent() {
+      if (!running || !ctx) return;
       const t = ctx.currentTime;
-      const baseFreq = 1200 + Math.random() * 2000;
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(baseFreq, t);
-      osc.frequency.linearRampToValueAtTime(baseFreq * 1.5, t + 0.1);
-      osc.frequency.linearRampToValueAtTime(baseFreq * 1.2, t + 0.2);
+      // Mini ráfaga de ruido muy corta y filtrada en banda alta
+      const dur = 0.04 + Math.random() * 0.06;
+      const sz = Math.floor(ctx.sampleRate * dur);
+      const b = ctx.createBuffer(1, sz, ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < sz; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / sz, 2);
+      }
+      const s = ctx.createBufferSource();
+      s.buffer = b;
+
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 2500 + Math.random() * 4000;
+      bp.Q.value = 2 + Math.random() * 3;
+
+      // Pan estéreo aleatorio para sensación de espacio
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) pan.pan.value = (Math.random() - 0.5) * 1.6;
 
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.15, t + 0.05);
-      g.gain.linearRampToValueAtTime(0, t + 0.3);
+      g.gain.setValueAtTime(0.18 * (0.4 + Math.random() * 0.6), t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
-      osc.connect(g);
+      s.connect(bp);
+      if (pan) { bp.connect(pan); pan.connect(g); }
+      else bp.connect(g);
       g.connect(masterGain);
-      osc.start(t);
-      osc.stop(t + 0.35);
+      s.start(t);
     }
 
-    let chirping = true;
-    function scheduleChirps() {
-      if (!chirping) return;
-      chirp();
-      if (Math.random() > 0.4) setTimeout(chirp, 150 + Math.random() * 200);
-      setTimeout(scheduleChirps, 800 + Math.random() * 3000);
+    function dropletScheduler() {
+      if (!running) return;
+      // ~12-20 gotas por segundo en momentos densos
+      const burst = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < burst; i++) dropletEvent();
+      setTimeout(dropletScheduler, 40 + Math.random() * 110);
     }
-    scheduleChirps();
+    dropletScheduler();
 
     return {
       stop: () => {
-        chirping = false;
+        running = false;
         nodes.forEach(n => n.stop());
       }
     };
   }
 
-  // ---- Fuego ----
+  // ---- Océano (olas reales con envolvente + espuma) ----
+  function createOcean() {
+    if (!ctx) return null;
+    let running = true;
+    const nodes = [];
+
+    // Ruido estéreo base (la fuente sonora del agua)
+    const bufSize = ctx.sampleRate * 6;
+    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+    }
+
+    // CAPA 1: rumor de fondo (océano lejano constante, muy grave)
+    const farSrc = ctx.createBufferSource();
+    farSrc.buffer = buf; farSrc.loop = true;
+    const farLp = ctx.createBiquadFilter();
+    farLp.type = 'lowpass'; farLp.frequency.value = 350; farLp.Q.value = 0.6;
+    const farG = ctx.createGain();
+    farG.gain.value = 0.22;
+    farSrc.connect(farLp); farLp.connect(farG); farG.connect(masterGain);
+    farSrc.start();
+    nodes.push({ stop: () => farSrc.stop() });
+
+    // CAPA 2: olas individuales programadas (cada ~7-11s)
+    function scheduleWave() {
+      if (!running) return;
+      const t = ctx.currentTime;
+      const dur = 6 + Math.random() * 3; // duración de la ola
+
+      // Cada ola es un buffer de ruido con su propio filtro y envolvente
+      const ws = ctx.createBufferSource();
+      ws.buffer = buf;
+      ws.loop = true;
+
+      // Filtro paso-bajo que sube en frecuencia al romper, luego cae
+      const wlp = ctx.createBiquadFilter();
+      wlp.type = 'lowpass';
+      wlp.frequency.setValueAtTime(400, t);
+      wlp.frequency.exponentialRampToValueAtTime(2200, t + dur * 0.45);  // crescendo
+      wlp.frequency.exponentialRampToValueAtTime(800, t + dur);          // decae
+
+      // Envolvente de amplitud: suave subida, pico, decay (la espuma)
+      const wg = ctx.createGain();
+      wg.gain.setValueAtTime(0.0001, t);
+      wg.gain.exponentialRampToValueAtTime(0.45, t + dur * 0.5);
+      wg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+      // Pan estéreo lento (la ola atraviesa de un lado al otro)
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) {
+        const start = (Math.random() - 0.5) * 1.4;
+        pan.pan.setValueAtTime(start, t);
+        pan.pan.linearRampToValueAtTime(-start * 0.5, t + dur);
+      }
+
+      ws.connect(wlp);
+      if (pan) { wlp.connect(pan); pan.connect(wg); }
+      else wlp.connect(wg);
+      wg.connect(masterGain);
+      ws.start(t);
+      ws.stop(t + dur + 0.1);
+
+      // Programar la siguiente ola
+      const nextIn = (3 + Math.random() * 3) * 1000;
+      setTimeout(scheduleWave, nextIn);
+    }
+    scheduleWave();
+
+    return {
+      stop: () => {
+        running = false;
+        nodes.forEach(n => n.stop());
+      }
+    };
+  }
+
+  // ---- Bosque (viento + hojas + pájaros con FM) ----
+  function createForest() {
+    if (!ctx) return null;
+    const nodes = [];
+    let running = true;
+
+    // CAPA 1: viento entre las copas — ruido bandpass con LFO lento
+    const bSize = ctx.sampleRate * 6;
+    const bBuf = ctx.createBuffer(2, bSize, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = bBuf.getChannelData(ch);
+      for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const wind = ctx.createBufferSource();
+    wind.buffer = bBuf; wind.loop = true;
+    const windBp = ctx.createBiquadFilter();
+    windBp.type = 'bandpass'; windBp.frequency.value = 400; windBp.Q.value = 0.5;
+    const windG = ctx.createGain();
+    windG.gain.value = 0.10;
+
+    // LFO modula frecuencia del filtro (ráfagas)
+    const windLfo = ctx.createOscillator();
+    const windLfoG = ctx.createGain();
+    windLfo.frequency.value = 0.07;
+    windLfoG.gain.value = 250;
+    windLfo.connect(windLfoG);
+    windLfoG.connect(windBp.frequency);
+
+    wind.connect(windBp); windBp.connect(windG); windG.connect(masterGain);
+    wind.start(); windLfo.start();
+    nodes.push({ stop: () => { wind.stop(); windLfo.stop(); } });
+
+    // CAPA 2: rumor de hojas suaves (más agudo)
+    const leaves = ctx.createBufferSource();
+    leaves.buffer = bBuf; leaves.loop = true;
+    const leavesHp = ctx.createBiquadFilter();
+    leavesHp.type = 'highpass'; leavesHp.frequency.value = 3000;
+    const leavesG = ctx.createGain();
+    leavesG.gain.value = 0.04;
+    leaves.connect(leavesHp); leavesHp.connect(leavesG); leavesG.connect(masterGain);
+    leaves.start();
+    nodes.push({ stop: () => leaves.stop() });
+
+    // CAPA 3: pájaros con síntesis FM (más realistas que sine puro)
+    function chirp(species = null) {
+      if (!ctx || !running) return;
+      const t = ctx.currentTime;
+
+      // Distintas "especies" con patrones diferentes
+      const types = species || [
+        { base: 2400, mod: 200, vib: 12, dur: 0.18, notes: 1, pattern: 'sweep' },
+        { base: 3200, mod: 400, vib: 18, dur: 0.10, notes: 3, pattern: 'trill' },
+        { base: 1800, mod: 150, vib: 8,  dur: 0.25, notes: 2, pattern: 'two-tone' },
+        { base: 4000, mod: 600, vib: 22, dur: 0.08, notes: 4, pattern: 'fast' },
+      ];
+      const cfg = types[Math.floor(Math.random() * types.length)];
+
+      // Pan aleatorio (cada pájaro en una rama distinta)
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) pan.pan.value = (Math.random() - 0.5) * 1.6;
+
+      const outGain = ctx.createGain();
+      outGain.gain.value = 0.08 + Math.random() * 0.06;
+      if (pan) { pan.connect(outGain); }
+      outGain.connect(masterGain);
+
+      for (let n = 0; n < cfg.notes; n++) {
+        const startT = t + n * (cfg.dur + 0.04);
+        // Portadora
+        const carrier = ctx.createOscillator();
+        carrier.type = 'sine';
+        const f0 = cfg.base * (1 + (Math.random() - 0.5) * 0.05);
+        carrier.frequency.setValueAtTime(f0, startT);
+        if (cfg.pattern === 'sweep')
+          carrier.frequency.linearRampToValueAtTime(f0 * 1.4, startT + cfg.dur);
+        else if (cfg.pattern === 'two-tone')
+          carrier.frequency.linearRampToValueAtTime(f0 * 0.75, startT + cfg.dur);
+
+        // Modulador FM para timbre rugoso/natural
+        const mod = ctx.createOscillator();
+        mod.type = 'sine';
+        mod.frequency.value = cfg.vib;
+        const modGain = ctx.createGain();
+        modGain.gain.value = cfg.mod;
+        mod.connect(modGain);
+        modGain.connect(carrier.frequency);
+
+        // Envolvente nota
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, startT);
+        env.gain.linearRampToValueAtTime(1, startT + 0.02);
+        env.gain.exponentialRampToValueAtTime(0.001, startT + cfg.dur);
+
+        carrier.connect(env);
+        env.connect(pan || outGain);
+        carrier.start(startT);
+        carrier.stop(startT + cfg.dur + 0.05);
+        mod.start(startT);
+        mod.stop(startT + cfg.dur + 0.05);
+      }
+    }
+
+    function scheduleChirps() {
+      if (!running) return;
+      // 60% de probabilidad de un único canto, 40% de "conversación" (2-3 cantos seguidos)
+      chirp();
+      if (Math.random() > 0.6) setTimeout(chirp, 200 + Math.random() * 400);
+      if (Math.random() > 0.85) setTimeout(chirp, 600 + Math.random() * 500);
+      setTimeout(scheduleChirps, 1500 + Math.random() * 5000);
+    }
+    scheduleChirps();
+
+    return {
+      stop: () => { running = false; nodes.forEach(n => n.stop()); }
+    };
+  }
+
+  // ---- Hoguera (rumor de llamas + chasquidos puntuales + sub) ----
   function createFire() {
     if (!ctx) return null;
-    const bufSize = ctx.sampleRate * 4;
-    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const nodes = [];
+    let running = true;
 
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
+    const bufSize = ctx.sampleRate * 6;
+    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+    }
 
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 1200;
+    // CAPA 1: cuerpo de la llama (whoosh continuo grave-medio)
+    const body = ctx.createBufferSource();
+    body.buffer = buf; body.loop = true;
+    const bodyLp = ctx.createBiquadFilter();
+    bodyLp.type = 'lowpass'; bodyLp.frequency.value = 900; bodyLp.Q.value = 0.4;
+    const bodyHp = ctx.createBiquadFilter();
+    bodyHp.type = 'highpass'; bodyHp.frequency.value = 90;
+    const bodyG = ctx.createGain();
+    bodyG.gain.value = 0.22;
 
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 80;
+    // LFO de respiración del fuego
+    const bodyLfo = ctx.createOscillator();
+    const bodyLfoG = ctx.createGain();
+    bodyLfo.frequency.value = 0.3;
+    bodyLfoG.gain.value = 0.06;
+    bodyLfo.connect(bodyLfoG); bodyLfoG.connect(bodyG.gain);
 
-    const g = ctx.createGain();
-    g.gain.value = 0.25;
+    body.connect(bodyHp); bodyHp.connect(bodyLp); bodyLp.connect(bodyG); bodyG.connect(masterGain);
+    body.start(); bodyLfo.start();
+    nodes.push({ stop: () => { body.stop(); bodyLfo.stop(); } });
 
-    // Crackles — LFO irregular
-    const lfo = ctx.createOscillator();
-    const lfoG = ctx.createGain();
-    lfo.frequency.value = 7 + Math.random() * 3;
-    lfoG.gain.value = 0.1;
-    lfo.connect(lfoG);
-    lfoG.connect(g.gain);
-    lfo.start();
+    // CAPA 2: sub-rumor (la base grave del fuego)
+    const sub = ctx.createBufferSource();
+    sub.buffer = buf; sub.loop = true;
+    const subLp = ctx.createBiquadFilter();
+    subLp.type = 'lowpass'; subLp.frequency.value = 200;
+    const subG = ctx.createGain();
+    subG.gain.value = 0.08;
+    sub.connect(subLp); subLp.connect(subG); subG.connect(masterGain);
+    sub.start();
+    nodes.push({ stop: () => sub.stop() });
 
-    src.connect(hp);
-    hp.connect(lp);
-    lp.connect(g);
-    g.connect(masterGain);
-    src.start();
+    // CAPA 3: chasquidos individuales (los "pops" de la madera ardiendo)
+    function crackle(intensity = 1) {
+      if (!ctx || !running) return;
+      const t = ctx.currentTime;
+      const dur = 0.02 + Math.random() * 0.05;
+      const sz = Math.floor(ctx.sampleRate * dur);
+      const cb = ctx.createBuffer(1, sz, ctx.sampleRate);
+      const d = cb.getChannelData(0);
+      // Pop seco con caída brusca
+      for (let i = 0; i < sz; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / sz, 4);
+      }
+      const s = ctx.createBufferSource();
+      s.buffer = cb;
 
-    return { stop: () => { src.stop(); lfo.stop(); } };
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1500 + Math.random() * 3000;
+      bp.Q.value = 1.5 + Math.random() * 2;
+
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) pan.pan.value = (Math.random() - 0.5) * 1.4;
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.4 * intensity * (0.5 + Math.random() * 0.7), t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      s.connect(bp);
+      if (pan) { bp.connect(pan); pan.connect(g); } else bp.connect(g);
+      g.connect(masterGain);
+      s.start(t);
+    }
+
+    function scheduleCrackles() {
+      if (!running) return;
+      // Ráfagas variables: a veces 1, a veces 3-4 chasquidos seguidos
+      const burst = Math.random() < 0.3 ? 1 + Math.floor(Math.random() * 3) : 1;
+      for (let i = 0; i < burst; i++) {
+        setTimeout(() => crackle(0.6 + Math.random() * 0.6), i * (30 + Math.random() * 60));
+      }
+      // Cada cierto tiempo un POP más grande (resina ardiendo)
+      if (Math.random() < 0.05) setTimeout(() => crackle(2.2), 100);
+      setTimeout(scheduleCrackles, 100 + Math.random() * 400);
+    }
+    scheduleCrackles();
+
+    return {
+      stop: () => { running = false; nodes.forEach(n => n.stop()); }
+    };
   }
 
   // ---- Cuencos continuos (bucle) ----

@@ -2,13 +2,14 @@
    ZENFLOW — Service Worker (offline-first)
    ============================================ */
 
-const CACHE = 'zenflow-v1';
+const CACHE = 'zenflow-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
   './js/audio.js',
+  './js/voice.js',
   './js/animations.js',
   './js/sessions.js',
   './js/tracker.js',
