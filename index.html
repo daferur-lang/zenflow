@@ -96,10 +96,18 @@
           <div class="date-label" id="date-label"></div>
           <div class="grad-title grad-title--34" id="greeting"></div>
         </div>
-        <button class="streak-pill" id="streak-badge" title="Tu racha">
-          <span class="streak-fire">🔥</span>
-          <span id="streak-count" class="streak-num">0</span>
-        </button>
+        <div class="home-header-right">
+          <button class="settings-btn" id="btn-settings" title="Configuración de voz">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="streak-pill" id="streak-badge" title="Tu racha">
+            <span class="streak-fire">🔥</span>
+            <span id="streak-count" class="streak-num">0</span>
+          </button>
+        </div>
       </header>
 
       <!-- Sacred geometry centerpiece -->
@@ -508,6 +516,40 @@
       </div>
 
       <div style="height:32px"></div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS MODAL ───────────────────────────────── -->
+  <div id="settings-modal" class="settings-modal hidden" role="dialog" aria-modal="true" aria-label="Configuración de voz">
+    <div class="settings-backdrop" id="settings-backdrop"></div>
+    <div class="settings-sheet">
+      <div class="settings-header">
+        <div class="settings-title">Voz narrada</div>
+        <button class="settings-close" id="btn-settings-close" aria-label="Cerrar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">API Key de ElevenLabs</div>
+        <div class="settings-hint">Voz humana y natural. Sin key usa la voz del sistema. <br><a class="settings-link" href="https://elevenlabs.io" target="_blank" rel="noopener">Crear cuenta gratis →</a></div>
+        <input type="password" id="el-api-key-input" class="settings-input" placeholder="sk_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">ID de voz <span class="settings-optional">(opcional)</span></div>
+        <div class="settings-hint">ID de tu voz en ElevenLabs. Por defecto: Sarah.</div>
+        <input type="text" id="el-voice-id-input" class="settings-input" placeholder="EXAVITQu4vr4xnSDxMaL" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="settings-actions">
+        <button id="btn-test-voice" class="btn-test-voice">Probar voz</button>
+        <button id="btn-save-settings" class="btn-save-settings">Guardar</button>
+      </div>
+
+      <div id="settings-status" class="settings-status hidden"></div>
     </div>
   </div>
 

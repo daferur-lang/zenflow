@@ -55,9 +55,73 @@
     setupSeeAll();
     setupSessionScreen();
     setupSleepMode();
+    setupSettings();
     updateProgress();
     ZenAnim.initMandala();
     ZenAnim.initAudioViz();
+  }
+
+  // ---- Configuración (ElevenLabs) ----
+  function setupSettings() {
+    const modal    = document.getElementById('settings-modal');
+    const backdrop = document.getElementById('settings-backdrop');
+    const btnOpen  = document.getElementById('btn-settings');
+    const btnClose = document.getElementById('btn-settings-close');
+    const btnSave  = document.getElementById('btn-save-settings');
+    const btnTest  = document.getElementById('btn-test-voice');
+    const keyInput = document.getElementById('el-api-key-input');
+    const vidInput = document.getElementById('el-voice-id-input');
+    const status   = document.getElementById('settings-status');
+    if (!modal || !btnOpen) return;
+
+    function openModal() {
+      keyInput.value = ZenVoice.getApiKey();
+      vidInput.value = ZenVoice.getVoiceId() !== 'EXAVITQu4vr4xnSDxMaL' ? ZenVoice.getVoiceId() : '';
+      modal.classList.remove('hidden');
+      status.className = 'settings-status hidden';
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+    }
+
+    function showStatus(msg, type) {
+      status.textContent = msg;
+      status.className = `settings-status ${type}`;
+      setTimeout(() => { status.className = 'settings-status hidden'; }, 3500);
+    }
+
+    btnOpen.addEventListener('click', openModal);
+    btnClose.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal);
+
+    btnSave.addEventListener('click', () => {
+      ZenVoice.setApiKey(keyInput.value);
+      if (vidInput.value.trim()) ZenVoice.setVoiceId(vidInput.value);
+      showStatus('Configuración guardada', 'ok');
+      setTimeout(closeModal, 1200);
+    });
+
+    btnTest.addEventListener('click', async () => {
+      const key = keyInput.value.trim();
+      if (!key) {
+        showStatus('Introduce tu API key primero', 'err');
+        return;
+      }
+      ZenVoice.setApiKey(key);
+      if (vidInput.value.trim()) ZenVoice.setVoiceId(vidInput.value);
+      btnTest.disabled = true;
+      btnTest.textContent = 'Cargando...';
+      try {
+        await ZenVoice.speak('Hola. Soy tu guía de meditación. Respira profundo.');
+        showStatus('Voz activa', 'ok');
+      } catch (e) {
+        showStatus('Error: revisa tu API key', 'err');
+      } finally {
+        btnTest.disabled = false;
+        btnTest.textContent = 'Probar voz';
+      }
+    });
   }
 
   // ---- Fecha ----

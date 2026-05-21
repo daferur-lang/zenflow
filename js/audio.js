@@ -415,12 +415,11 @@ const ZenAudio = (() => {
       if (!ctx || !running) return;
       const t = ctx.currentTime;
 
-      // Distintas "especies" con patrones diferentes
+      // Distintas "especies" con patrones calmados
       const types = species || [
         { base: 2400, mod: 200, vib: 12, dur: 0.18, notes: 1, pattern: 'sweep' },
-        { base: 3200, mod: 400, vib: 18, dur: 0.10, notes: 3, pattern: 'trill' },
-        { base: 1800, mod: 150, vib: 8,  dur: 0.25, notes: 2, pattern: 'two-tone' },
-        { base: 4000, mod: 600, vib: 22, dur: 0.08, notes: 4, pattern: 'fast' },
+        { base: 3200, mod: 300, vib: 14, dur: 0.13, notes: 2, pattern: 'trill' },
+        { base: 1800, mod: 150, vib: 8,  dur: 0.28, notes: 2, pattern: 'two-tone' },
       ];
       const cfg = types[Math.floor(Math.random() * types.length)];
 
@@ -471,11 +470,11 @@ const ZenAudio = (() => {
 
     function scheduleChirps() {
       if (!running) return;
-      // 60% de probabilidad de un único canto, 40% de "conversación" (2-3 cantos seguidos)
       chirp();
-      if (Math.random() > 0.6) setTimeout(chirp, 200 + Math.random() * 400);
-      if (Math.random() > 0.85) setTimeout(chirp, 600 + Math.random() * 500);
-      setTimeout(scheduleChirps, 1500 + Math.random() * 5000);
+      // "Conversación" ocasional — más espaciada
+      if (Math.random() > 0.78) setTimeout(chirp, 400 + Math.random() * 600);
+      if (Math.random() > 0.93) setTimeout(chirp, 1000 + Math.random() * 800);
+      setTimeout(scheduleChirps, 5000 + Math.random() * 10000);
     }
     scheduleChirps();
 
@@ -510,7 +509,7 @@ const ZenAudio = (() => {
     // LFO de respiración del fuego
     const bodyLfo = ctx.createOscillator();
     const bodyLfoG = ctx.createGain();
-    bodyLfo.frequency.value = 0.3;
+    bodyLfo.frequency.value = 0.11;
     bodyLfoG.gain.value = 0.06;
     bodyLfo.connect(bodyLfoG); bodyLfoG.connect(bodyG.gain);
 
@@ -564,14 +563,14 @@ const ZenAudio = (() => {
 
     function scheduleCrackles() {
       if (!running) return;
-      // Ráfagas variables: a veces 1, a veces 3-4 chasquidos seguidos
-      const burst = Math.random() < 0.3 ? 1 + Math.floor(Math.random() * 3) : 1;
+      // Ráfagas variables: esporádicas para un fuego tranquilo
+      const burst = Math.random() < 0.10 ? 1 + Math.floor(Math.random() * 2) : 1;
       for (let i = 0; i < burst; i++) {
-        setTimeout(() => crackle(0.6 + Math.random() * 0.6), i * (30 + Math.random() * 60));
+        setTimeout(() => crackle(0.5 + Math.random() * 0.5), i * (40 + Math.random() * 80));
       }
-      // Cada cierto tiempo un POP más grande (resina ardiendo)
-      if (Math.random() < 0.05) setTimeout(() => crackle(2.2), 100);
-      setTimeout(scheduleCrackles, 100 + Math.random() * 400);
+      // POP grande muy ocasional
+      if (Math.random() < 0.02) setTimeout(() => crackle(1.8), 200);
+      setTimeout(scheduleCrackles, 900 + Math.random() * 2000);
     }
     scheduleCrackles();
 
