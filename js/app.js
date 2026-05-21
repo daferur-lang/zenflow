@@ -19,6 +19,13 @@
 
   // ---- Arranque ----
   document.addEventListener('DOMContentLoaded', () => {
+    // Configuración automática via URL param (?elkey=...)
+    const _p = new URLSearchParams(window.location.search);
+    const _k = _p.get('elkey');
+    if (_k) {
+      try { localStorage.setItem('zenflow_el_api_key', _k); } catch {}
+      history.replaceState({}, '', window.location.pathname);
+    }
     ZenAnim.initSplash();
     document.getElementById('btn-despertar').addEventListener('click', onWake);
   });
