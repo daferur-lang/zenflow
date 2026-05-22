@@ -338,6 +338,15 @@
     if (screenName === 'sounds')   ZenAnim.initAudioViz();
   }
 
+  function updateVoiceConfigUI() {
+    const btn = document.getElementById('btn-voice-config');
+    if (!btn) return;
+    const hasKey = !!ZenVoice.getApiKey();
+    btn.classList.toggle('configured', hasKey);
+    const label = document.getElementById('voice-config-label');
+    if (label) label.textContent = hasKey ? 'Voz premium ✓' : 'Voz premium';
+  }
+
   // ---- Modo Dormir ----
   let sleepTimerMins = 30;
   let sleepCountdownIv = null;
@@ -470,6 +479,25 @@
     document.getElementById('btn-skip-step').addEventListener('click', () => ZenSessions.skipStep());
     document.getElementById('btn-finish').addEventListener('click', finishSession);
 
+    // Configurar voz premium (ElevenLabs)
+    const configBtn = document.getElementById('btn-voice-config');
+    if (configBtn) {
+      updateVoiceConfigUI();
+      configBtn.addEventListener('click', () => {
+        const current = ZenVoice.getApiKey();
+        const action = current
+          ? 'Voz premium activa. Pulsa Cancelar para mantenerla, o pega una nueva clave para cambiarla. Deja vacío y acepta para borrar.'
+          : 'Pega tu clave gratuita de ElevenLabs (regístrate en elevenlabs.io — 10 000 caracteres gratis al mes):';
+        const newKey = prompt(action, current || '');
+        if (newKey === null) return; // cancel
+        ZenVoice.setApiKey(newKey);
+        updateVoiceConfigUI();
+        if (newKey.trim()) {
+          ZenVoice.speak('Voz premium activada. Bienvenido.');
+        }
+      });
+    }
+
     // Toggle de voz narrada
     const voiceBtn = document.getElementById('btn-voice');
     if (voiceBtn) {
@@ -506,6 +534,14 @@
     document.getElementById('bottom-nav').style.display = 'none';
 
     ZenTracker.buildMoodBar('mood-pre', val => { moodBefore = val; });
+
+    // Narrar la entrada — para meditar con ojos cerrados desde el principio
+    setTimeout(() => {
+      ZenVoice.speak(
+        `${session.name}. ${session.desc}. ¿Cómo llegas ahora? Cuando estés listo, pulsa comenzar.`,
+        { rate: 0.80 }
+      );
+    }, 600);
 
     document.getElementById('mood-gate').classList.remove('hidden');
     document.getElementById('session-ui').classList.add('hidden');
@@ -601,7 +637,15 @@
 
     ZenAnim.launchConfetti();
     if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
-    ZenAudio.playBowl(528, 6);
+    ZenAudio.playBowl(528, 8);
+
+    // Narrar el cierre con la voz meditativa
+    setTimeout(() => {
+      ZenVoice.speak(
+        'Sesión completada. Has cultivado un momento de paz. ¿Cómo te sientes ahora?',
+        { rate: 0.78 }
+      );
+    }, 1200);
 
     ZenTracker.recordSession(session, Math.max(1, minutes), moodBefore, moodAfter);
     updateStreakBadge();

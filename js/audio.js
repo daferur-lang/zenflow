@@ -13,13 +13,91 @@ const ZenAudio = (() => {
   function init() {
     if (ctx) return ctx;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Bus principal donde se conectan TODOS los sonidos ambientales
     masterGain = ctx.createGain();
     masterGain.gain.value = 0.7;
+
+    // ───── CADENA MAESTRA DE ESTUDIO ─────
+    // 1) Low-shelf cálido (+2 dB sub-bajos, da cuerpo)
+    const warmShelf = ctx.createBiquadFilter();
+    warmShelf.type = 'lowshelf';
+    warmShelf.frequency.value = 220;
+    warmShelf.gain.value = 2.0;
+
+    // 2) High-shelf suave (-1.5 dB agudos, quita aspereza digital)
+    const smoothShelf = ctx.createBiquadFilter();
+    smoothShelf.type = 'highshelf';
+    smoothShelf.frequency.value = 9000;
+    smoothShelf.gain.value = -1.5;
+
+    // 3) Compresor suave (cohesiona la mezcla, glue compression)
+    const masterComp = ctx.createDynamicsCompressor();
+    masterComp.threshold.value = -22;
+    masterComp.knee.value = 18;
+    masterComp.ratio.value = 2.2;
+    masterComp.attack.value = 0.030;
+    masterComp.release.value = 0.28;
+
+    // 4) Reverb sutil con red de delays (espacio sin coste de convolución)
+    const reverbDry = ctx.createGain();
+    const reverbWet = ctx.createGain();
+    reverbDry.gain.value = 0.88;
+    reverbWet.gain.value = 0.12;
+
+    const reverbBus = ctx.createGain();
+    const delayTimes = [0.0297, 0.0371, 0.0411, 0.0437];
+    const feedback = 0.45;
+    delayTimes.forEach((dt, i) => {
+      const d = ctx.createDelay(0.5);
+      d.delayTime.value = dt;
+      const fb = ctx.createGain();
+      fb.gain.value = feedback;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 4500; // reverb oscuro = más natural
+      reverbBus.connect(d);
+      d.connect(lp);
+      lp.connect(fb);
+      fb.connect(d);
+      // ping-pong stereo
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) {
+        pan.pan.value = i % 2 === 0 ? -0.6 : 0.6;
+        lp.connect(pan);
+        pan.connect(reverbWet);
+      } else {
+        lp.connect(reverbWet);
+      }
+    });
+
+    // 5) Limitador de seguridad (evita clipping si suben muchas capas)
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.08;
+
+    // 6) Analyser para el visualizador
     analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
     analyser.smoothingTimeConstant = 0.85;
-    masterGain.connect(analyser);
+
+    // ── Conexión de la cadena ──
+    // masterGain → warm → smooth → split (dry|reverb) → comp → limiter → analyser → destination
+    masterGain.connect(warmShelf);
+    warmShelf.connect(smoothShelf);
+    smoothShelf.connect(reverbDry);
+    smoothShelf.connect(reverbBus);
+    reverbDry.connect(masterComp);
+    reverbWet.connect(masterComp);
+    masterComp.connect(limiter);
+    limiter.connect(analyser);
     analyser.connect(ctx.destination);
+
+    // Exponer reverb para sonidos que quieran más send (cuencos, etc.)
+    ctx._reverbBus = reverbBus;
     return ctx;
   }
 
@@ -39,44 +117,99 @@ const ZenAudio = (() => {
       `linear-gradient(90deg, var(--purple) ${v}%, rgba(255,255,255,0.1) ${v}%)`;
   }
 
-  // ---- Cuenco Tibetano ----
-  function playBowl(freq = 432, duration = 8) {
+  // ---- Generador de ruido rosa (Paul Kellet) — más natural que blanco ----
+  function makePinkNoiseBuffer(seconds = 6, stereo = true) {
+    const sz = ctx.sampleRate * seconds;
+    const buf = ctx.createBuffer(stereo ? 2 : 1, sz, ctx.sampleRate);
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+      const d = buf.getChannelData(ch);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < sz; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.96900 * b2 + w * 0.1538520;
+        b3 = 0.86650 * b3 + w * 0.3104856;
+        b4 = 0.55000 * b4 + w * 0.5329522;
+        b5 = -0.7616 * b5 - w * 0.0168980;
+        d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+        b6 = w * 0.115926;
+      }
+    }
+    return buf;
+  }
+
+  // ---- Cuenco Tibetano (rico en armónicos + envolvente realista + reverb) ----
+  function playBowl(freq = 432, duration = 10) {
     if (!ctx) return;
     const t = ctx.currentTime;
 
-    // Sonido fundamental + armónicos
-    const harmonics = [1, 2.756, 5.404];
-    const gains_db = [1, 0.4, 0.15];
-    const nodes = [];
+    // Espectro real de cuenco tibetano: ratios inarmónicos medidos
+    const partials = [
+      { ratio: 1.000, gain: 1.00,  attack: 0.020, decay: 1.00, vib: 4.8 },
+      { ratio: 2.756, gain: 0.55,  attack: 0.015, decay: 0.85, vib: 6.2 },
+      { ratio: 5.404, gain: 0.28,  attack: 0.010, decay: 0.65, vib: 7.8 },
+      { ratio: 8.93,  gain: 0.14,  attack: 0.008, decay: 0.40, vib: 9.5 },
+      { ratio: 13.34, gain: 0.06,  attack: 0.005, decay: 0.25, vib: 12  },
+    ];
 
-    harmonics.forEach((mult, i) => {
+    // Bus del cuenco con send al reverb maestro
+    const bowlBus = ctx.createGain();
+    bowlBus.gain.value = 0.75;
+    const reverbSend = ctx.createGain();
+    reverbSend.gain.value = 0.35; // generoso para cuencos
+    bowlBus.connect(masterGain);
+    if (ctx._reverbBus) bowlBus.connect(ctx._reverbBus);
+
+    // Golpe inicial — clic metálico muy corto que da el ataque del mallet
+    const tickLen = Math.floor(ctx.sampleRate * 0.015);
+    const tickBuf = ctx.createBuffer(1, tickLen, ctx.sampleRate);
+    const td = tickBuf.getChannelData(0);
+    for (let i = 0; i < tickLen; i++) td[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / tickLen, 6);
+    const tick = ctx.createBufferSource();
+    tick.buffer = tickBuf;
+    const tickBp = ctx.createBiquadFilter();
+    tickBp.type = 'bandpass';
+    tickBp.frequency.value = freq * 3;
+    tickBp.Q.value = 8;
+    const tickG = ctx.createGain();
+    tickG.gain.setValueAtTime(0.3, t);
+    tickG.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    tick.connect(tickBp); tickBp.connect(tickG); tickG.connect(bowlBus);
+    tick.start(t);
+
+    partials.forEach((p, i) => {
       const osc = ctx.createOscillator();
-      const g = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.value = freq * mult;
+      const f = freq * p.ratio * (1 + (Math.random() - 0.5) * 0.001); // detuning sutil
+      osc.frequency.value = f;
 
-      // Ligero vibrato
+      // Vibrato individual por parcial — crea el característico "batido" del cuenco
       const lfo = ctx.createOscillator();
       const lfoGain = ctx.createGain();
-      lfo.frequency.value = 5 + i;
-      lfoGain.gain.value = 2;
+      lfo.frequency.value = p.vib;
+      lfoGain.gain.value = f * 0.0015;
       lfo.connect(lfoGain);
       lfoGain.connect(osc.frequency);
       lfo.start(t);
-      lfo.stop(t + duration);
+      lfo.stop(t + duration + 0.5);
 
+      // Envolvente con ataque suave y decay individual por armónico
+      const g = ctx.createGain();
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(gains_db[i] * 0.8, t + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      g.gain.linearRampToValueAtTime(p.gain * 0.6, t + p.attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + duration * p.decay);
+
+      // Pan estéreo sutil distinto por armónico para amplitud espacial
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) pan.pan.value = (i / partials.length - 0.5) * 0.6;
 
       osc.connect(g);
-      g.connect(masterGain);
+      if (pan) { g.connect(pan); pan.connect(bowlBus); }
+      else g.connect(bowlBus);
       osc.start(t);
-      osc.stop(t + duration);
-      nodes.push(osc, g, lfo, lfoGain);
+      osc.stop(t + duration + 0.5);
     });
-
-    return nodes;
   }
 
   // ---- Tambor chamánico (frame drum sintetizado) ----
@@ -185,19 +318,9 @@ const ZenAudio = (() => {
     const nodes = [];
     let running = true;
 
-    // CAPA 1: lluvia distante (constante, ruido filtrado alto)
-    function makeNoiseBuffer(seconds = 6, stereo = true) {
-      const sz = ctx.sampleRate * seconds;
-      const b = ctx.createBuffer(stereo ? 2 : 1, sz, ctx.sampleRate);
-      for (let ch = 0; ch < b.numberOfChannels; ch++) {
-        const d = b.getChannelData(ch);
-        for (let i = 0; i < sz; i++) d[i] = Math.random() * 2 - 1;
-      }
-      return b;
-    }
-
+    // Ahora usa ruido ROSA (espectro 1/f) en lugar de blanco — suena natural
     const distant = ctx.createBufferSource();
-    distant.buffer = makeNoiseBuffer(6, true);
+    distant.buffer = makePinkNoiseBuffer(6, true);
     distant.loop = true;
     const distHp = ctx.createBiquadFilter();
     distHp.type = 'highpass'; distHp.frequency.value = 1200;
@@ -224,7 +347,7 @@ const ZenAudio = (() => {
 
     // CAPA 2: lluvia media (más cuerpo, hiss continuo de gotas)
     const mid = ctx.createBufferSource();
-    mid.buffer = makeNoiseBuffer(5, true);
+    mid.buffer = makePinkNoiseBuffer(5, true);
     mid.loop = true;
     const midBp = ctx.createBiquadFilter();
     midBp.type = 'bandpass'; midBp.frequency.value = 3500; midBp.Q.value = 0.4;
@@ -295,13 +418,8 @@ const ZenAudio = (() => {
     let running = true;
     const nodes = [];
 
-    // Ruido estéreo base (la fuente sonora del agua)
-    const bufSize = ctx.sampleRate * 6;
-    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-      const d = buf.getChannelData(ch);
-      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
-    }
+    // Ruido ROSA estéreo base (más realista que blanco para el agua)
+    const buf = makePinkNoiseBuffer(6, true);
 
     // CAPA 1: rumor de fondo (océano lejano constante, muy grave)
     const farSrc = ctx.createBufferSource();
@@ -373,13 +491,8 @@ const ZenAudio = (() => {
     const nodes = [];
     let running = true;
 
-    // CAPA 1: viento entre las copas — ruido bandpass con LFO lento
-    const bSize = ctx.sampleRate * 6;
-    const bBuf = ctx.createBuffer(2, bSize, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-      const d = bBuf.getChannelData(ch);
-      for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
-    }
+    // CAPA 1: viento entre las copas — ruido ROSA bandpass con LFO lento
+    const bBuf = makePinkNoiseBuffer(6, true);
     const wind = ctx.createBufferSource();
     wind.buffer = bBuf; wind.loop = true;
     const windBp = ctx.createBiquadFilter();
@@ -489,12 +602,8 @@ const ZenAudio = (() => {
     const nodes = [];
     let running = true;
 
-    const bufSize = ctx.sampleRate * 6;
-    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-      const d = buf.getChannelData(ch);
-      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
-    }
+    // Ruido ROSA para la base del fuego (más cálido)
+    const buf = makePinkNoiseBuffer(6, true);
 
     // CAPA 1: cuerpo de la llama (whoosh continuo grave-medio)
     const body = ctx.createBufferSource();
@@ -595,37 +704,78 @@ const ZenAudio = (() => {
     return { stop: () => { running = false; clearInterval(timer); } };
   }
 
-  // ---- Pad Ambient ----
+  // ---- Pad Ambient (rico: 3 voces detune + chorus + filter sweep + reverb) ----
   function createAmbientPad(chord = [130.8, 164.8, 196, 261.6]) {
     if (!ctx) return null;
-    const oscs = chord.map((freq, i) => {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
+    const all = [];
 
-      // Ligero detune para riqueza
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.value = freq * 1.002;
+    // Bus del pad con envío al reverb maestro
+    const padBus = ctx.createGain();
+    padBus.gain.value = 1;
+    padBus.connect(masterGain);
+    if (ctx._reverbBus) {
+      const send = ctx.createGain();
+      send.gain.value = 0.40;
+      padBus.connect(send);
+      send.connect(ctx._reverbBus);
+    }
 
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0, ctx.currentTime);
-      g.gain.linearRampToValueAtTime(0.06 / (i + 1), ctx.currentTime + 3);
+    // Filtro paso-bajo común que evoluciona lentamente (movimiento espectral)
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 800;
+    filt.Q.value = 1.2;
+    filt.connect(padBus);
 
-      osc.connect(g);
-      osc2.connect(g);
-      g.connect(masterGain);
-      osc.start();
-      osc2.start();
-      return { osc, osc2, g };
+    // LFO global del filtro (sweep meditativo de 30s)
+    const filtLfo = ctx.createOscillator();
+    const filtLfoG = ctx.createGain();
+    filtLfo.frequency.value = 0.033;  // ~30s ciclo
+    filtLfoG.gain.value = 600;
+    filtLfo.connect(filtLfoG);
+    filtLfoG.connect(filt.frequency);
+    filtLfo.start();
+
+    chord.forEach((freq, i) => {
+      // 3 voces ligeramente detunadas por nota — coro orgánico
+      const detunes = [-7, 0, +7]; // cents
+      const voiceGain = ctx.createGain();
+      voiceGain.gain.setValueAtTime(0, ctx.currentTime);
+      voiceGain.gain.linearRampToValueAtTime(0.05 / (i + 1), ctx.currentTime + 4);
+      voiceGain.connect(filt);
+
+      detunes.forEach(d => {
+        const osc = ctx.createOscillator();
+        osc.type = i === 0 ? 'triangle' : 'sine'; // graves con triangle = más cuerpo
+        osc.frequency.value = freq;
+        osc.detune.value = d;
+
+        // Vibrato muy lento e independiente por voz
+        const vib = ctx.createOscillator();
+        const vibG = ctx.createGain();
+        vib.frequency.value = 0.15 + Math.random() * 0.2;
+        vibG.gain.value = freq * 0.001;
+        vib.connect(vibG);
+        vibG.connect(osc.frequency);
+
+        osc.connect(voiceGain);
+        osc.start();
+        vib.start();
+        all.push(osc, vib);
+      });
+
+      all.push(voiceGain);
     });
+    all.push(filtLfo);
 
     return {
       stop: () => {
-        oscs.forEach(({ osc, osc2, g }) => {
-          g.gain.setTargetAtTime(0, ctx.currentTime, 0.5);
-          setTimeout(() => { osc.stop(); osc2.stop(); }, 1500);
+        const t = ctx.currentTime;
+        // Fade out suave
+        all.forEach(n => {
+          if (n.gain) n.gain.setTargetAtTime(0, t, 0.8);
         });
+        setTimeout(() => all.forEach(n => { try { n.stop && n.stop(); } catch {} }), 2500);
       }
     };
   }
@@ -682,18 +832,20 @@ const ZenAudio = (() => {
     };
   }
 
-  // ---- Ruido marrón (ideal para dormir — más grave, como lluvia distante) ----
+  // ---- Ruido marrón (integración 1/f² real, estéreo decorrelacionado) ----
   function createBrownNoise() {
     if (!ctx) return null;
-    const bufSize = ctx.sampleRate * 6;
+    const bufSize = ctx.sampleRate * 8;
     const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
       const data = buf.getChannelData(ch);
-      let last = 0;
+      // Semilla aleatoria distinta por canal → estéreo natural
+      let last = (Math.random() - 0.5) * 0.5;
       for (let i = 0; i < bufSize; i++) {
         const white = Math.random() * 2 - 1;
-        last = (last + 0.02 * white) / 1.02;
-        data[i] = last * 3.5;
+        // Integración con leak para que no se desborde + escala
+        last = Math.max(-1, Math.min(1, (last + 0.018 * white) / 1.018));
+        data[i] = last * 3.2;
       }
     }
     const src = ctx.createBufferSource();

@@ -513,6 +513,23 @@ svg    { display: block; }
 }
 .btn-start:active { transform: scale(0.98); }
 
+.btn-voice-config {
+  margin-top: 8px;
+  padding: 8px 14px; border-radius: 100px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(10px);
+  font-family: var(--sans); font-size: 11px; font-weight: 500;
+  color: var(--text-muted); letter-spacing: 0.5px;
+  transition: all 0.2s; cursor: pointer;
+}
+.btn-voice-config:active { transform: scale(0.96); }
+.btn-voice-config.configured {
+  background: rgba(124,58,237,0.15);
+  border-color: rgba(168,85,247,0.45);
+  color: var(--violet-lite);
+}
+
 /* Session UI */
 .session-ui {
   position: absolute; inset: 0;

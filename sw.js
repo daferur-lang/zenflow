@@ -2,7 +2,7 @@
    ZENFLOW — Service Worker (offline-first)
    ============================================ */
 
-const CACHE = 'zenflow-v2';
+const CACHE = 'zenflow-v3';
 const ASSETS = [
   './',
   './index.html',
