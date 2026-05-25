@@ -558,6 +558,10 @@
 
     ZenAnim.initViz();
 
+    // Pre-cargar cues de respiración para reproducción sin latencia
+    const PHASE_CUE = { inhale: 'Inhala', hold: 'Aguanta', exhale: 'Suelta' };
+    Object.values(PHASE_CUE).forEach(cue => ZenVoice.preload(cue));
+
     ZenSessions.start(pendingSession.id, {
       onStep: (step, idx, total) => {
         const fill = document.getElementById('prog-fill');
@@ -586,11 +590,12 @@
               const nextNarrated = pendingSession?.steps.slice(idx + 1).find(s => !s.phase);
               if (nextNarrated) ZenVoice.preload(nextNarrated.text);
             } else {
-              // Paso de respiración (inhale/hold/exhale) — solo texto, sin voz
-              // La animación del círculo guía al usuario
+              // Paso de respiración — voz dice la palabra de la burbuja
               ZenVoice.stop();
               box.textContent = step.text;
               box.classList.remove('fade');
+              const cue = PHASE_CUE[step.phase];
+              if (cue) ZenVoice.speak(cue);
             }
           }, 400);
         }
