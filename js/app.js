@@ -567,22 +567,31 @@
         if (box) {
           box.classList.add('fade');
           setTimeout(() => {
-            box.innerHTML = buildWordSpans(step.text);
-            box.classList.remove('fade');
+            if (!step.phase) {
+              // Paso de explicación (dur largo) — narrar con sincronización palabra a palabra
+              box.innerHTML = buildWordSpans(step.text);
+              box.classList.remove('fade');
 
-            const wordSpans = box.querySelectorAll('.word');
-            ZenVoice.speak(step.text, {
-              onWordIndex: (wIdx) => {
-                wordSpans.forEach((span, i) => {
-                  span.classList.toggle('spoken',   i < wIdx);
-                  span.classList.toggle('speaking', i === wIdx);
-                });
-              },
-            });
+              const wordSpans = box.querySelectorAll('.word');
+              ZenVoice.speak(step.text, {
+                onWordIndex: (wIdx) => {
+                  wordSpans.forEach((span, i) => {
+                    span.classList.toggle('spoken',   i < wIdx);
+                    span.classList.toggle('speaking', i === wIdx);
+                  });
+                },
+              });
 
-            // Pre-cargar el siguiente paso mientras éste suena
-            const nextStep = pendingSession?.steps[idx + 1];
-            if (nextStep) ZenVoice.preload(nextStep.text);
+              // Pre-cargar el siguiente paso narrado mientras éste suena
+              const nextNarrated = pendingSession?.steps.slice(idx + 1).find(s => !s.phase);
+              if (nextNarrated) ZenVoice.preload(nextNarrated.text);
+            } else {
+              // Paso de respiración (inhale/hold/exhale) — solo texto, sin voz
+              // La animación del círculo guía al usuario
+              ZenVoice.stop();
+              box.textContent = step.text;
+              box.classList.remove('fade');
+            }
           }, 400);
         }
 
