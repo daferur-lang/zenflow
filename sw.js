@@ -2,7 +2,7 @@
    ZENFLOW — Service Worker (offline-first)
    ============================================ */
 
-const CACHE = 'zenflow-v4';
+const CACHE = 'zenflow-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -39,11 +39,15 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  const isAudio = url.pathname.includes('/audio/');
+
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
-        if (res && res.status === 200) {
+        // Cachear assets propios y todos los archivos de audio pregrabado
+        if (res && res.status === 200 && (isAudio || url.origin === self.location.origin)) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }

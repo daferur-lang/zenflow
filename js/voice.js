@@ -22,6 +22,33 @@ const ZenVoice = (() => {
   // Caché: `${voiceId}:${text}` → { audioBytes: ArrayBuffer, wordTimings: [] }
   const audioCache = new Map();
 
+  // Hash idéntico al de generate-audio.js (djb2-like, base36)
+  function textHash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+    }
+    return Math.abs(h).toString(36);
+  }
+
+  // Intentar cargar audio pregrabado desde /audio/{hash}.mp3 + .json
+  async function loadLocalAudio(text) {
+    const hash = textHash(text);
+    try {
+      const [mp3Resp, jsonResp] = await Promise.all([
+        fetch(`./audio/${hash}.mp3`),
+        fetch(`./audio/${hash}.json`),
+      ]);
+      if (!mp3Resp.ok || !jsonResp.ok) return null;
+      const audioBytes = await mp3Resp.arrayBuffer();
+      const alignment  = await jsonResp.json();
+      const wordTimings = buildWordTimings(text, alignment);
+      return { audioBytes, wordTimings };
+    } catch {
+      return null;
+    }
+  }
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved !== null) enabled = saved === 'true';
@@ -72,11 +99,18 @@ const ZenVoice = (() => {
   function getVoiceId()   { try { return localStorage.getItem(EL_VOICE_STORAGE) || DEFAULT_VOICE_ID; } catch { return DEFAULT_VOICE_ID; } }
   function setVoiceId(id) { try { localStorage.setItem(EL_VOICE_STORAGE, id.trim() || DEFAULT_VOICE_ID); } catch {} audioCache.clear(); }
 
-  // Llama al Worker proxy (la API key vive en Cloudflare como secret)
   async function fetchWithTimestamps(text, voiceId) {
     const cacheKey = `${voiceId}:${text}`;
     if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
 
+    // Prioridad 1: archivo pregrabado en /audio/
+    const local = await loadLocalAudio(text);
+    if (local) {
+      audioCache.set(cacheKey, local);
+      return local;
+    }
+
+    // Prioridad 2: ElevenLabs API (fallback en tiempo real)
     const resp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`, {
       method: 'POST',
       headers: {
