@@ -16,10 +16,8 @@ const ZenVoice = (() => {
   const STORAGE_KEY      = 'zenflow_voice_enabled';
   const EL_VOICE_STORAGE = 'zenflow_el_voice_id';
   const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL'; // Sarah — cálida, clara
-
-  // URL del Cloudflare Worker proxy — rellenar tras el deploy
-  // Formato: 'https://zenflow-voice.TU-SUBDOMINIO.workers.dev'
-  const WORKER_URL = 'https://zenflow-voice.daferur.workers.dev';
+  const EL_API_KEY       = 'sk_239d0120a0a2b8d5d2aefad29e9b1aede6b6b41c7b416aac';
+  const EL_MODEL         = 'eleven_multilingual_v2';
 
   // Caché: `${voiceId}:${text}` → { audioBytes: ArrayBuffer, wordTimings: [] }
   const audioCache = new Map();
@@ -79,15 +77,22 @@ const ZenVoice = (() => {
     const cacheKey = `${voiceId}:${text}`;
     if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
 
-    const resp = await fetch(WORKER_URL, {
+    const resp = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: voiceId }),
+      headers: {
+        'xi-api-key': EL_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        model_id: EL_MODEL,
+        voice_settings: { stability: 0.88, similarity_boost: 0.82, style: 0.12, use_speaker_boost: true },
+      }),
     });
 
     if (!resp.ok) {
       const msg = await resp.text().catch(() => String(resp.status));
-      throw new Error(`Proxy ${resp.status}: ${msg}`);
+      throw new Error(`ElevenLabs ${resp.status}: ${msg}`);
     }
 
     const json = await resp.json();
@@ -215,16 +220,14 @@ const ZenVoice = (() => {
   async function speak(text, opts = {}) {
     if (!enabled || !text) return;
     stop();
-    if (WORKER_URL) {
-      try { await speakElevenLabs(text, opts); return; }
-      catch (e) { console.warn('[ZenVoice] Worker falló, usando Web Speech:', e.message); }
-    }
+    try { await speakElevenLabs(text, opts); return; }
+    catch (e) { console.warn('[ZenVoice] ElevenLabs falló, usando Web Speech:', e.message); }
     speakWebSpeech(text, opts);
   }
 
   // Pre-cargar el siguiente paso en caché mientras el actual suena
   async function preload(text) {
-    if (!text || !WORKER_URL) return;
+    if (!text) return;
     const voiceId  = getVoiceId();
     const cacheKey = `${voiceId}:${text}`;
     if (audioCache.has(cacheKey)) return;
