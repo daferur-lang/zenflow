@@ -19,7 +19,7 @@ const ZenVoice = (() => {
 
   // URL del Cloudflare Worker proxy — rellenar tras el deploy
   // Formato: 'https://zenflow-voice.TU-SUBDOMINIO.workers.dev'
-  const WORKER_URL = '';
+  const WORKER_URL = 'https://zenflow-voice.daferur.workers.dev';
 
   // Caché: `${voiceId}:${text}` → { audioBytes: ArrayBuffer, wordTimings: [] }
   const audioCache = new Map();
