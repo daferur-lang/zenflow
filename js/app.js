@@ -567,10 +567,22 @@
         if (box) {
           box.classList.add('fade');
           setTimeout(() => {
-            box.textContent = step.text;
+            box.innerHTML = buildWordSpans(step.text);
             box.classList.remove('fade');
-            // Narrar el paso con voz natural (esperar al fade-in)
-            ZenVoice.speak(step.text);
+
+            const wordSpans = box.querySelectorAll('.word');
+            ZenVoice.speak(step.text, {
+              onWordIndex: (wIdx) => {
+                wordSpans.forEach((span, i) => {
+                  span.classList.toggle('spoken',   i < wIdx);
+                  span.classList.toggle('speaking', i === wIdx);
+                });
+              },
+            });
+
+            // Pre-cargar el siguiente paso mientras éste suena
+            const nextStep = pendingSession?.steps[idx + 1];
+            if (nextStep) ZenVoice.preload(nextStep.text);
           }, 400);
         }
 
@@ -699,6 +711,17 @@
   function formatDur(seconds) {
     const m = Math.floor(seconds / 60);
     return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}min`;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function buildWordSpans(text) {
+    return text
+      .split(/(\s+)/)
+      .map(token => /^\s+$/.test(token) ? token : `<span class="word">${escapeHtml(token)}</span>`)
+      .join('');
   }
 
 })();

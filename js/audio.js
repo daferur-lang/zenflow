@@ -1034,5 +1034,6 @@ const ZenAudio = (() => {
     startSleepMix, fadeOutAll,
     getFrequencyData, getWaveformData,
     bowlTap, playBowl,
+    getCtx: () => ctx,
   };
 })();

@@ -646,6 +646,19 @@ svg    { display: block; }
 }
 .instruction-text.fade { opacity: 0; }
 
+/* Karaoke word sync (ElevenLabs timestamps) */
+.instruction-text .word {
+  display: inline;
+  opacity: 0.42;
+  transition: opacity 0.12s ease, color 0.12s ease, text-shadow 0.12s ease;
+}
+.instruction-text .word.speaking {
+  opacity: 1;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(167, 139, 250, 0.75);
+}
+.instruction-text .word.spoken { opacity: 0.68; }
+
 /* Circular timer */
 .timer-wrap { position: relative; width: 98px; height: 98px; flex-shrink: 0; }
 .timer-svg  { width: 100%; height: 100%; }

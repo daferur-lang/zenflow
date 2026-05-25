@@ -1,0 +1,7 @@
+name            = "zenflow-voice"
+main            = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Tras el deploy, añadir el secret con:
+#   wrangler secret put ELEVENLABS_API_KEY
+# Pegar la API key cuando lo pida.
