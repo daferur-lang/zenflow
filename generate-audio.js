@@ -46,7 +46,7 @@ function loadSessions() {
 
 // ── Recopilar todos los textos únicos a narrar ────────────────────────────────
 function collectTexts(sessions) {
-  const set = new Set(['Inhala', 'Aguanta', 'Suelta']); // cues de respiración
+  const set = new Set(['Inala', 'Aguanta', 'Suelta']); // cues de respiración
 
   // Texto de cierre (onSessionComplete en app.js)
   set.add('Sesión completada. Has cultivado un momento de paz. ¿Cómo te sientes ahora?');

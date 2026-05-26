@@ -559,7 +559,7 @@
     ZenAnim.initViz();
 
     // Pre-cargar cues de respiración para reproducción sin latencia
-    const PHASE_CUE = { inhale: 'Inhala', hold: 'Aguanta', exhale: 'Suelta' };
+    const PHASE_CUE = { inhale: 'Inala', hold: 'Aguanta', exhale: 'Suelta' };
     Object.values(PHASE_CUE).forEach(cue => ZenVoice.preload(cue));
 
     ZenSessions.start(pendingSession.id, {
