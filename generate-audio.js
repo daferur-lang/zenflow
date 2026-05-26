@@ -47,7 +47,15 @@ function loadSessions() {
 // ── Recopilar todos los textos únicos a narrar ────────────────────────────────
 function collectTexts(sessions) {
   const set = new Set(['Inhala', 'Aguanta', 'Suelta']); // cues de respiración
+
+  // Texto de cierre (onSessionComplete en app.js)
+  set.add('Sesión completada. Has cultivado un momento de paz. ¿Cómo te sientes ahora?');
+
   for (const session of sessions) {
+    // Intro por sesión (openSession en app.js)
+    set.add(`${session.name}. ${session.desc}. ¿Cómo llegas ahora? Cuando estés listo, pulsa comenzar.`);
+
+    // Pasos narrados (phase: null)
     for (const step of session.steps) {
       if (!step.phase) set.add(step.text);
     }
